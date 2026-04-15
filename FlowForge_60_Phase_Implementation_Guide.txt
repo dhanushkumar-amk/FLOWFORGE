@@ -1,0 +1,3418 @@
+================================================================================
+              FLOWFORGE – COMPLETE 60-PHASE IMPLEMENTATION GUIDE
+         From Zero to Production-Ready DAG Workflow Orchestration Platform
+================================================================================
+Version     : 1.0 (April 2026)
+Total Phases: 60
+Estimated   : 10–14 weeks (part-time) | 5–7 weeks (full-time)
+================================================================================
+
+HOW TO USE THIS GUIDE:
+  - Follow phases strictly in order. Each phase builds on the previous.
+  - Each phase has: GOAL, TASKS, FILES TO CREATE, and OUTCOME.
+  - Do not skip phases. Even "setup" phases prevent 10x debugging later.
+  - Mark each phase complete before moving to the next.
+
+================================================================================
+                         SECTION 1: PROJECT FOUNDATION
+                              PHASES 1 – 8
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 1 – MONOREPO SETUP & TOOLING CONFIGURATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Set up the monorepo workspace so both frontend and backend can coexist,
+  share types, and be managed from a single root.
+
+TASKS:
+  1. Create root folder: flowforge/
+  2. Initialize git: git init
+  3. Create root package.json with workspaces config:
+       {
+         "name": "flowforge",
+         "private": true,
+         "workspaces": ["apps/*", "packages/*"]
+       }
+  4. Install Turborepo: npm install turbo --save-dev
+  5. Create turbo.json with pipeline for build, lint, dev
+  6. Create .gitignore (node_modules, .env, .next, dist, build)
+  7. Create .nvmrc with Node version (20.x)
+  8. Create root README.md (placeholder for now)
+  9. Create folder structure:
+       flowforge/
+       ├── apps/
+       │   ├── frontend/
+       │   └── backend/
+       ├── packages/
+       │   ├── shared-types/
+       │   └── config/
+       └── .github/
+           └── workflows/
+
+FILES TO CREATE:
+  - /package.json
+  - /turbo.json
+  - /.gitignore
+  - /.nvmrc
+  - /README.md
+  - /apps/.gitkeep
+  - /packages/.gitkeep
+
+OUTCOME:
+  A clean monorepo root. Running "turbo dev" from root will eventually
+  start both frontend and backend simultaneously.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 2 – SHARED PACKAGES SETUP (TYPES & CONFIG)
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Create shared TypeScript types and shared config that both frontend
+  and backend will import. This prevents duplication and type mismatches.
+
+TASKS:
+  1. Navigate to packages/shared-types/
+  2. Initialize: npm init -y
+  3. Install TypeScript: npm install typescript --save-dev
+  4. Create tsconfig.json
+  5. Create src/index.ts and export all shared types:
+       - IUser interface
+       - IWorkspace interface
+       - IWorkflow interface (with dagJson type)
+       - ITask interface
+       - IExecution interface
+       - INode (React Flow node type)
+       - IEdge (React Flow edge type)
+       - WorkflowStatus enum (PENDING | RUNNING | COMPLETED | FAILED)
+       - TaskStatus enum
+       - UserRole enum (OWNER | ADMIN | MEMBER | VIEWER)
+       - ExecutionLog interface
+  6. Navigate to packages/config/
+  7. Initialize: npm init -y
+  8. Create src/index.ts with shared constants:
+       - API_ROUTES object
+       - SOCKET_EVENTS object
+       - WORKFLOW_LIMITS object
+       - ERROR_CODES object
+
+FILES TO CREATE:
+  - packages/shared-types/package.json
+  - packages/shared-types/tsconfig.json
+  - packages/shared-types/src/index.ts
+  - packages/shared-types/src/types/user.types.ts
+  - packages/shared-types/src/types/workflow.types.ts
+  - packages/shared-types/src/types/execution.types.ts
+  - packages/config/package.json
+  - packages/config/src/index.ts
+  - packages/config/src/constants.ts
+
+OUTCOME:
+  Both apps can now import from "@flowforge/shared-types" and
+  "@flowforge/config" without duplication.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 3 – BACKEND PROJECT INITIALIZATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Set up the Express.js + TypeScript backend with all tooling configured
+  before writing a single route.
+
+TASKS:
+  1. Navigate to apps/backend/
+  2. Initialize: npm init -y
+  3. Install production dependencies:
+       - express
+       - cors
+       - helmet
+       - dotenv
+       - mongoose
+       - socket.io
+       - redis (ioredis)
+       - jsonwebtoken
+       - zod (validation)
+       - morgan (logging)
+       - express-rate-limit
+       - multer (file uploads)
+       - @clerk/express (clerk SDK)
+  4. Install dev dependencies:
+       - typescript
+       - ts-node-dev
+       - @types/express, @types/cors, @types/node, @types/morgan
+       - eslint + prettier
+       - jest + ts-jest + @types/jest
+  5. Create tsconfig.json (strict mode, outDir: dist)
+  6. Create .env.example with ALL required env vars:
+       - PORT
+       - MONGODB_URI
+       - REDIS_URL
+       - CLERK_SECRET_KEY
+       - CLERK_PUBLISHABLE_KEY
+       - CLOUDFLARE_R2_BUCKET
+       - CLOUDFLARE_R2_ACCESS_KEY
+       - CLOUDFLARE_R2_SECRET_KEY
+       - INNGEST_EVENT_KEY
+       - INNGEST_SIGNING_KEY
+       - GEMINI_API_KEY
+       - RAZORPAY_KEY_ID
+       - RAZORPAY_KEY_SECRET
+  7. Create .eslintrc.json and .prettierrc
+  8. Set up package.json scripts:
+       - dev: ts-node-dev src/index.ts
+       - build: tsc
+       - start: node dist/index.js
+       - test: jest
+
+FILES TO CREATE:
+  - apps/backend/package.json
+  - apps/backend/tsconfig.json
+  - apps/backend/.env.example
+  - apps/backend/.eslintrc.json
+  - apps/backend/.prettierrc
+  - apps/backend/src/ (empty folder)
+
+OUTCOME:
+  Backend is ready to receive code. All dependencies installed.
+  No actual server yet — that comes next phase.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 4 – EXPRESS SERVER BOOTSTRAP & MIDDLEWARE STACK
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Create the Express server with all global middleware configured.
+  The server should start, log requests, and respond to a health check.
+
+TASKS:
+  1. Create apps/backend/src/index.ts:
+       - Initialize Express app
+       - Apply helmet() for security headers
+       - Apply cors() with allowed origins from env
+       - Apply morgan('combined') for request logging
+       - Apply express.json() with 10mb limit
+       - Apply express.urlencoded()
+       - Mount /health route returning { status: 'ok', timestamp }
+       - Export app for testing
+       - Start server on PORT from env
+  2. Create apps/backend/src/config/env.ts:
+       - Load and validate all env vars using zod schema
+       - Throw error on startup if any required var is missing
+  3. Create apps/backend/src/middleware/errorHandler.ts:
+       - Global error handling middleware
+       - Handles: ValidationError, MongoError, custom AppError
+       - Returns consistent { success: false, error, statusCode } shape
+  4. Create apps/backend/src/middleware/notFound.ts:
+       - 404 handler for unknown routes
+  5. Create apps/backend/src/utils/logger.ts:
+       - Structured logger using console with JSON format
+       - Methods: info, warn, error, debug
+  6. Create apps/backend/src/utils/AppError.ts:
+       - Custom error class extending Error
+       - Fields: message, statusCode, isOperational
+  7. Test: npm run dev → server starts on PORT 4000
+  8. Test: GET /health → returns 200 OK
+
+FILES TO CREATE:
+  - apps/backend/src/index.ts
+  - apps/backend/src/config/env.ts
+  - apps/backend/src/middleware/errorHandler.ts
+  - apps/backend/src/middleware/notFound.ts
+  - apps/backend/src/utils/logger.ts
+  - apps/backend/src/utils/AppError.ts
+
+OUTCOME:
+  Server runs. Health check responds. All middleware applied.
+  Error handling is consistent from day one.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 5 – MONGODB CONNECTION & DATABASE SETUP
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Connect to MongoDB Atlas with proper error handling, connection retry
+  logic, and graceful shutdown.
+
+TASKS:
+  1. Sign up / log in to MongoDB Atlas
+  2. Create free M0 cluster
+  3. Create database user with read/write permissions
+  4. Whitelist IP: 0.0.0.0/0 for development
+  5. Copy connection string to .env as MONGODB_URI
+  6. Create apps/backend/src/config/database.ts:
+       - Connect using mongoose.connect()
+       - Log connection success/failure
+       - Handle connection events: connected, error, disconnected
+       - Retry connection on failure (max 5 retries, 5s delay)
+  7. Call connectDB() in src/index.ts before starting server
+  8. Create apps/backend/src/config/redis.ts:
+       - Create ioredis client instance
+       - Connect to Redis (Upstash free tier)
+       - Log connection status
+       - Export redis client for use across app
+  9. Test both connections on server start
+  10. Add graceful shutdown logic:
+        - On SIGTERM: close mongoose + redis before exiting
+
+FILES TO CREATE:
+  - apps/backend/src/config/database.ts
+  - apps/backend/src/config/redis.ts
+
+OUTCOME:
+  Server connects to both MongoDB and Redis on startup.
+  Both connections are stable and handle errors gracefully.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 6 – FRONTEND PROJECT INITIALIZATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Bootstrap the Next.js 15 frontend with TypeScript, TailwindCSS,
+  shadcn/ui, and all required dependencies installed.
+
+TASKS:
+  1. Navigate to apps/frontend/
+  2. Create Next.js app:
+       npx create-next-app@latest . --typescript --tailwind --app --eslint
+  3. Install additional dependencies:
+       - @clerk/nextjs (auth)
+       - socket.io-client (real-time)
+       - reactflow (DAG builder)
+       - zustand (state management)
+       - react-query / tanstack-query (server state)
+       - axios (HTTP client)
+       - zod (form validation)
+       - react-hook-form
+       - date-fns (date formatting)
+       - lucide-react (icons)
+       - @radix-ui/react-* (UI primitives)
+  4. Install and initialize shadcn/ui:
+       npx shadcn@latest init
+       Install components: button, card, dialog, dropdown-menu,
+       input, label, badge, toast, skeleton, tabs, sheet, avatar,
+       tooltip, progress, separator
+  5. Configure tailwind.config.ts with custom theme:
+       - Primary, secondary, accent colors
+       - Dark mode support (class strategy)
+  6. Create apps/frontend/.env.local.example:
+       - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+       - CLERK_SECRET_KEY
+       - NEXT_PUBLIC_API_URL (backend URL)
+       - NEXT_PUBLIC_SOCKET_URL
+  7. Update apps/frontend/src/app/layout.tsx:
+       - Wrap with ClerkProvider
+       - Add ThemeProvider (dark mode)
+       - Add Toaster component
+  8. Create globals.css with CSS variables for theming
+
+FILES TO CREATE:
+  - apps/frontend/ (full Next.js structure)
+  - apps/frontend/.env.local.example
+  - apps/frontend/tailwind.config.ts
+  - apps/frontend/src/app/layout.tsx
+  - apps/frontend/src/app/globals.css
+
+OUTCOME:
+  Frontend starts with "npm run dev". Dark mode works.
+  shadcn/ui components are available. Clerk is wired in.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 7 – CLERK AUTHENTICATION SETUP (BACKEND + FRONTEND)
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Integrate Clerk for authentication on both frontend and backend.
+  All protected routes require a valid Clerk session.
+
+TASKS:
+  BACKEND:
+  1. Create apps/backend/src/middleware/auth.ts:
+       - Use @clerk/express clerkMiddleware()
+       - Extract userId from auth() helper
+       - Attach userId to req.auth
+       - Return 401 if no valid session
+  2. Create requireAuth middleware that wraps routes
+  3. Create apps/backend/src/middleware/requireWorkspace.ts:
+       - Verify user belongs to requested workspace
+       - Return 403 if unauthorized
+
+  FRONTEND:
+  4. Create apps/frontend/src/middleware.ts:
+       - Use Clerk's clerkMiddleware()
+       - Protect all routes except: /, /sign-in, /sign-up
+       - Redirect unauthenticated users to /sign-in
+  5. Create apps/frontend/src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:
+       - Use Clerk's <SignIn /> component
+       - Center on page with logo
+  6. Create apps/frontend/src/app/(auth)/sign-up/[[...sign-up]]/page.tsx:
+       - Use Clerk's <SignUp /> component
+  7. Create apps/frontend/src/app/(auth)/layout.tsx:
+       - Centered auth layout with dark background
+  8. Create apps/frontend/src/hooks/useAuth.ts:
+       - Custom hook wrapping useUser() from Clerk
+       - Returns: user, isLoaded, isSignedIn, signOut
+
+FILES TO CREATE:
+  - apps/backend/src/middleware/auth.ts
+  - apps/backend/src/middleware/requireWorkspace.ts
+  - apps/frontend/src/middleware.ts
+  - apps/frontend/src/app/(auth)/sign-in/[[...sign-in]]/page.tsx
+  - apps/frontend/src/app/(auth)/sign-up/[[...sign-up]]/page.tsx
+  - apps/frontend/src/app/(auth)/layout.tsx
+  - apps/frontend/src/hooks/useAuth.ts
+
+OUTCOME:
+  Users can sign up, log in, and log out. Protected routes redirect
+  to /sign-in. Backend returns 401 for requests without valid token.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 8 – DOCKER & DEVELOPMENT ENVIRONMENT SETUP
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Dockerize the backend for consistent development and production.
+  Create docker-compose for running Redis locally.
+
+TASKS:
+  1. Create apps/backend/Dockerfile:
+       FROM node:20-alpine
+       WORKDIR /app
+       COPY package*.json ./
+       RUN npm ci --only=production
+       COPY dist ./dist
+       EXPOSE 4000
+       CMD ["node", "dist/index.js"]
+  2. Create apps/backend/.dockerignore
+  3. Create root docker-compose.yml:
+       services:
+         redis:
+           image: redis:7-alpine
+           ports: ["6379:6379"]
+           volumes: [redis-data:/data]
+         backend:
+           build: ./apps/backend
+           ports: ["4000:4000"]
+           env_file: ./apps/backend/.env
+           depends_on: [redis]
+  4. Create apps/frontend/Dockerfile:
+       FROM node:20-alpine as builder
+       ... build stage
+       FROM node:20-alpine as runner
+       ... production stage
+  5. Add npm script to root package.json:
+       "docker:dev": "docker-compose up redis -d"
+  6. Create .env.development with local Redis URL
+  7. Test: docker-compose up → Redis starts
+  8. Test: Backend connects to local Redis
+
+FILES TO CREATE:
+  - apps/backend/Dockerfile
+  - apps/backend/.dockerignore
+  - apps/frontend/Dockerfile
+  - docker-compose.yml
+  - docker-compose.prod.yml
+
+OUTCOME:
+  Local dev environment uses Docker Redis. Backend is containerized.
+  docker-compose up spins up everything needed.
+
+================================================================================
+                        SECTION 2: DATA LAYER
+                             PHASES 9 – 13
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 9 – MONGODB SCHEMAS & MODELS
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Define all MongoDB schemas with proper indexing, validation, and
+  TypeScript interfaces. This is the foundation of data integrity.
+
+TASKS:
+  1. Create apps/backend/src/models/User.model.ts:
+       Schema fields:
+         - clerkId: String (unique, required, indexed)
+         - email: String (unique, required)
+         - name: String (required)
+         - avatar: String (optional)
+         - plan: enum ['free', 'pro'] (default: 'free')
+         - createdAt, updatedAt (timestamps: true)
+       Indexes: clerkId (unique), email (unique)
+
+  2. Create apps/backend/src/models/Workspace.model.ts:
+       Schema fields:
+         - name: String (required)
+         - slug: String (unique, required)
+         - ownerId: String (required, ref: User)
+         - members: [{ userId, role, joinedAt }]
+         - plan: enum ['free', 'pro']
+         - settings: { maxWorkflows, maxMembers, ... }
+         - createdAt, updatedAt
+       Indexes: slug (unique), ownerId, members.userId
+
+  3. Create apps/backend/src/models/Workflow.model.ts:
+       Schema fields:
+         - workspaceId: ObjectId (ref: Workspace, required)
+         - name: String (required)
+         - description: String
+         - dagJson: {
+             nodes: [{ id, type, position, data }],
+             edges: [{ id, source, target, data }]
+           }
+         - status: enum ['draft','active','archived']
+         - version: Number (default: 1)
+         - tags: [String]
+         - createdBy: String (clerkId)
+         - updatedBy: String
+         - isTemplate: Boolean (default: false)
+         - createdAt, updatedAt
+       Indexes: workspaceId, status, createdBy, tags
+
+  4. Create apps/backend/src/models/Task.model.ts:
+       Schema fields:
+         - workflowId: ObjectId (ref: Workflow, required)
+         - nodeId: String (React Flow node id, required)
+         - name: String (required)
+         - type: enum ['manual','automated','api','condition','delay','ai']
+         - config: Mixed (task-specific config)
+         - dependencies: [String] (nodeIds this task depends on)
+         - retryPolicy: { maxRetries, delay, backoff }
+         - timeout: Number (ms)
+         - status: enum ['pending','running','completed','failed','skipped']
+
+  5. Create apps/backend/src/models/Execution.model.ts:
+       Schema fields:
+         - workflowId: ObjectId (ref: Workflow, required)
+         - workspaceId: ObjectId (required)
+         - triggeredBy: String (clerkId or 'cron' or 'webhook')
+         - status: enum ['pending','running','completed','failed','cancelled']
+         - startedAt: Date
+         - completedAt: Date
+         - duration: Number (ms)
+         - stepResults: [{
+             nodeId, taskName, status, startedAt,
+             completedAt, output, error, retryCount
+           }]
+         - logs: [{ timestamp, level, message, nodeId }]
+         - inngestRunId: String
+       Indexes: workflowId, workspaceId, status, triggeredBy, startedAt
+
+  6. Create apps/backend/src/models/AuditLog.model.ts:
+       Schema fields:
+         - workspaceId: ObjectId (required)
+         - userId: String (clerkId)
+         - action: String (required) e.g. 'workflow.created'
+         - resource: String e.g. 'workflow'
+         - resourceId: String
+         - metadata: Mixed
+         - ipAddress: String
+         - userAgent: String
+         - timestamp: Date (default: now)
+       Indexes: workspaceId, userId, action, timestamp
+
+FILES TO CREATE:
+  - apps/backend/src/models/User.model.ts
+  - apps/backend/src/models/Workspace.model.ts
+  - apps/backend/src/models/Workflow.model.ts
+  - apps/backend/src/models/Task.model.ts
+  - apps/backend/src/models/Execution.model.ts
+  - apps/backend/src/models/AuditLog.model.ts
+  - apps/backend/src/models/index.ts (re-exports all)
+
+OUTCOME:
+  All data models defined with proper TypeScript types, validation,
+  and database indexes. Ready for repository layer.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 10 – REPOSITORY PATTERN IMPLEMENTATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Implement the Repository Pattern to abstract all database operations.
+  Controllers never touch models directly — they go through repositories.
+
+TASKS:
+  1. Create apps/backend/src/repositories/base.repository.ts:
+       - Generic BaseRepository<T> class
+       - Methods:
+           findById(id): Promise<T | null>
+           findOne(filter): Promise<T | null>
+           findMany(filter, options): Promise<T[]>
+           create(data): Promise<T>
+           updateById(id, data): Promise<T | null>
+           deleteById(id): Promise<boolean>
+           count(filter): Promise<number>
+           paginate(filter, page, limit): Promise<{data, total, page, pages}>
+
+  2. Create apps/backend/src/repositories/user.repository.ts:
+       - Extends BaseRepository<IUser>
+       - Additional methods:
+           findByClerkId(clerkId): Promise<IUser | null>
+           findByEmail(email): Promise<IUser | null>
+           upsertByClerkId(clerkId, data): Promise<IUser>
+
+  3. Create apps/backend/src/repositories/workspace.repository.ts:
+       - Extends BaseRepository<IWorkspace>
+       - Additional methods:
+           findBySlug(slug): Promise<IWorkspace | null>
+           findByMemberId(userId): Promise<IWorkspace[]>
+           addMember(workspaceId, userId, role): Promise<IWorkspace>
+           removeMember(workspaceId, userId): Promise<IWorkspace>
+           updateMemberRole(workspaceId, userId, role): Promise<IWorkspace>
+
+  4. Create apps/backend/src/repositories/workflow.repository.ts:
+       - Extends BaseRepository<IWorkflow>
+       - Additional methods:
+           findByWorkspace(workspaceId, filter): Promise<IWorkflow[]>
+           findTemplates(): Promise<IWorkflow[]>
+           incrementVersion(id): Promise<IWorkflow>
+           searchByTags(tags): Promise<IWorkflow[]>
+
+  5. Create apps/backend/src/repositories/execution.repository.ts:
+       - Extends BaseRepository<IExecution>
+       - Additional methods:
+           findByWorkflow(workflowId, filter): Promise<IExecution[]>
+           getExecutionStats(workspaceId): Promise<stats>
+           appendLog(id, log): Promise<void>
+           updateStepResult(id, nodeId, result): Promise<void>
+
+  6. Create apps/backend/src/repositories/auditLog.repository.ts:
+       - Extends BaseRepository<IAuditLog>
+       - Additional methods:
+           logAction(data): Promise<void>
+           findByWorkspace(workspaceId, filter): Promise<IAuditLog[]>
+
+FILES TO CREATE:
+  - apps/backend/src/repositories/base.repository.ts
+  - apps/backend/src/repositories/user.repository.ts
+  - apps/backend/src/repositories/workspace.repository.ts
+  - apps/backend/src/repositories/workflow.repository.ts
+  - apps/backend/src/repositories/execution.repository.ts
+  - apps/backend/src/repositories/auditLog.repository.ts
+  - apps/backend/src/repositories/index.ts
+
+OUTCOME:
+  All DB operations are abstracted. Switching from MongoDB to Postgres
+  would only require changing repository implementations, not controllers.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 11 – USER & WORKSPACE API ROUTES
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Build user profile management and workspace CRUD endpoints.
+  These are the foundation all other features depend on.
+
+TASKS:
+  1. Create apps/backend/src/controllers/user.controller.ts:
+       - syncUser(): POST /api/users/sync
+           Clerk webhook → creates/updates user in MongoDB
+       - getProfile(): GET /api/users/me
+           Returns current user profile
+       - updateProfile(): PATCH /api/users/me
+           Updates name, avatar
+
+  2. Create apps/backend/src/controllers/workspace.controller.ts:
+       - createWorkspace(): POST /api/workspaces
+           Validates name, generates slug, sets owner
+       - getWorkspaces(): GET /api/workspaces
+           Returns all workspaces for current user
+       - getWorkspaceById(): GET /api/workspaces/:id
+           Returns single workspace with member list
+       - updateWorkspace(): PATCH /api/workspaces/:id
+           Updates name, settings (owner/admin only)
+       - deleteWorkspace(): DELETE /api/workspaces/:id
+           Soft delete (owner only)
+       - inviteMember(): POST /api/workspaces/:id/members
+           Sends invite email via Clerk
+       - removeMember(): DELETE /api/workspaces/:id/members/:userId
+       - updateMemberRole(): PATCH /api/workspaces/:id/members/:userId
+
+  3. Create apps/backend/src/routes/user.routes.ts:
+       - Mount all user controller methods with requireAuth
+
+  4. Create apps/backend/src/routes/workspace.routes.ts:
+       - Mount all workspace controller methods
+       - Apply requireAuth + requireWorkspace middleware
+
+  5. Create apps/backend/src/services/user.service.ts:
+       - Business logic layer between controller and repository
+       - handleClerkWebhook(event): creates/updates/deletes user
+       - getUserProfile(clerkId): enriches user with workspace count
+
+  6. Create apps/backend/src/services/workspace.service.ts:
+       - createWorkspace(data, ownerId): validates + creates
+       - getUserWorkspaces(userId): fetches with membership info
+       - inviteMember(workspaceId, email, role): validates + sends invite
+
+  7. Register all routes in src/index.ts under /api prefix
+  8. Test all endpoints with Postman or curl
+
+FILES TO CREATE:
+  - apps/backend/src/controllers/user.controller.ts
+  - apps/backend/src/controllers/workspace.controller.ts
+  - apps/backend/src/services/user.service.ts
+  - apps/backend/src/services/workspace.service.ts
+  - apps/backend/src/routes/user.routes.ts
+  - apps/backend/src/routes/workspace.routes.ts
+
+OUTCOME:
+  Users can create accounts, be synced from Clerk, create workspaces,
+  invite members, and manage roles. Full CRUD with auth protection.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 12 – INPUT VALIDATION MIDDLEWARE & ZOD SCHEMAS
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Every API endpoint validates input before it reaches the controller.
+  This prevents bad data from entering the database.
+
+TASKS:
+  1. Create apps/backend/src/validation/schemas/workspace.schema.ts:
+       - createWorkspaceSchema: { name (3-50 chars), description? }
+       - updateWorkspaceSchema: partial of create
+       - inviteMemberSchema: { email, role }
+
+  2. Create apps/backend/src/validation/schemas/workflow.schema.ts:
+       - createWorkflowSchema: { name, description?, tags? }
+       - updateWorkflowSchema: partial
+       - dagJsonSchema: validates nodes and edges structure
+
+  3. Create apps/backend/src/validation/schemas/execution.schema.ts:
+       - triggerExecutionSchema: { workflowId, input? }
+
+  4. Create apps/backend/src/middleware/validate.ts:
+       - Factory function: validate(schema)
+       - Returns middleware that runs zod.parse() on req.body
+       - On failure: returns 422 with formatted error array
+       - On success: calls next()
+
+  5. Apply validate middleware to all existing routes:
+       - POST /api/workspaces → validate(createWorkspaceSchema)
+       - PATCH /api/workspaces/:id → validate(updateWorkspaceSchema)
+       - POST /api/workspaces/:id/members → validate(inviteMemberSchema)
+
+  6. Create apps/backend/src/utils/formatZodErrors.ts:
+       - Converts Zod error format to user-friendly messages
+
+  7. Write unit tests for all schemas:
+       - Valid inputs pass
+       - Invalid inputs return correct error messages
+
+FILES TO CREATE:
+  - apps/backend/src/validation/schemas/workspace.schema.ts
+  - apps/backend/src/validation/schemas/workflow.schema.ts
+  - apps/backend/src/validation/schemas/execution.schema.ts
+  - apps/backend/src/middleware/validate.ts
+  - apps/backend/src/utils/formatZodErrors.ts
+  - apps/backend/src/validation/__tests__/schemas.test.ts
+
+OUTCOME:
+  All API inputs are validated before reaching business logic.
+  Invalid requests get clear error messages with field-level details.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 13 – REDIS CACHING LAYER
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Implement a caching layer for frequently read data to reduce MongoDB
+  load and achieve sub-100ms response times on hot paths.
+
+TASKS:
+  1. Create apps/backend/src/utils/cache.ts:
+       - CacheManager class wrapping ioredis
+       - Methods:
+           get<T>(key): Promise<T | null>
+           set(key, value, ttlSeconds): Promise<void>
+           del(key): Promise<void>
+           delPattern(pattern): Promise<void> (for cache invalidation)
+           getOrSet(key, fetchFn, ttl): Promise<T> (cache-aside pattern)
+
+  2. Create cache key constants:
+       CACHE_KEYS = {
+         user: (id) => `user:${id}`,
+         workspace: (id) => `workspace:${id}`,
+         workspaceList: (userId) => `workspaces:user:${userId}`,
+         workflow: (id) => `workflow:${id}`,
+         workflowList: (wsId) => `workflows:ws:${wsId}`,
+         executionStats: (wsId) => `stats:ws:${wsId}`
+       }
+
+  3. Apply caching in workspace.service.ts:
+       - getUserWorkspaces(): check cache first, set on miss (TTL: 5 min)
+       - getWorkspaceById(): check cache first (TTL: 10 min)
+       - On update/delete: invalidate relevant cache keys
+
+  4. Apply caching in user.service.ts:
+       - getProfile(): cache user profile (TTL: 15 min)
+       - On update: invalidate user cache
+
+  5. Create apps/backend/src/middleware/cacheMiddleware.ts:
+       - Route-level cache middleware for simple GET routes
+       - Checks cache before controller runs
+
+  6. Create apps/backend/src/utils/cacheInvalidation.ts:
+       - Helper functions to invalidate all related caches
+         when a resource is mutated
+
+FILES TO CREATE:
+  - apps/backend/src/utils/cache.ts
+  - apps/backend/src/utils/cacheKeys.ts
+  - apps/backend/src/middleware/cacheMiddleware.ts
+  - apps/backend/src/utils/cacheInvalidation.ts
+
+OUTCOME:
+  Repeated reads for workspaces, users, and workflows hit Redis
+  instead of MongoDB. Cache is properly invalidated on mutations.
+
+================================================================================
+                      SECTION 3: DSA IMPLEMENTATIONS
+                             PHASES 14 – 17
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 14 – TOPOLOGICAL SORT IMPLEMENTATION (KAHN'S ALGORITHM)
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Implement Kahn's algorithm for topological sorting of the DAG.
+  This determines the correct order to execute workflow tasks.
+
+TASKS:
+  1. Create apps/backend/src/utils/dsa/topologicalSort.ts:
+
+       ALGORITHM (Kahn's):
+         Input: nodes (array of nodeIds), edges (array of {source, target})
+
+         Step 1: Build adjacency list
+           - For each edge (u → v): adjList[u].push(v)
+
+         Step 2: Calculate in-degree for each node
+           - inDegree[v]++ for each edge (u → v)
+
+         Step 3: Initialize queue with all nodes having inDegree = 0
+
+         Step 4: Process queue
+           - Dequeue node u
+           - Add u to result
+           - For each neighbor v of u:
+               inDegree[v]--
+               if inDegree[v] === 0: enqueue v
+
+         Step 5: If result.length !== nodes.length → cycle detected
+
+         Return: ordered array of nodeIds or throw CycleError
+
+       Complexity: O(V + E) time, O(V + E) space
+
+  2. Create apps/backend/src/utils/dsa/cycleDetection.ts:
+
+       ALGORITHM (DFS-based):
+         Track: visited set, recursionStack set
+
+         For each unvisited node:
+           dfs(node):
+             Mark as visited, add to recursionStack
+             For each neighbor:
+               If not visited: recurse
+               If in recursionStack: CYCLE DETECTED → return path
+             Remove from recursionStack
+
+         Return: { hasCycle: boolean, cyclePath?: string[] }
+
+       Complexity: O(V + E) time, O(V) space
+
+  3. Create apps/backend/src/utils/dsa/dagValidator.ts:
+       - validateDAG(nodes, edges): runs both cycle detection + topo sort
+       - Returns: { valid, executionOrder, errors }
+
+  4. Write comprehensive unit tests:
+       - Linear DAG: A → B → C → D
+       - Branching DAG: A → B, A → C, B → D, C → D
+       - Parallel DAG: A → C, B → C
+       - Cycle: A → B → C → A (should throw)
+       - Self-loop: A → A (should throw)
+       - Disconnected graph (should handle)
+
+FILES TO CREATE:
+  - apps/backend/src/utils/dsa/topologicalSort.ts
+  - apps/backend/src/utils/dsa/cycleDetection.ts
+  - apps/backend/src/utils/dsa/dagValidator.ts
+  - apps/backend/src/utils/dsa/__tests__/topologicalSort.test.ts
+  - apps/backend/src/utils/dsa/__tests__/cycleDetection.test.ts
+
+OUTCOME:
+  DAG validation works correctly. Invalid workflows with cycles are
+  rejected before execution. Execution order is deterministic.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 15 – PRIORITY QUEUE IMPLEMENTATION (BINARY HEAP)
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Implement a min-heap priority queue for scheduling tasks with
+  priorities and timestamps.
+
+TASKS:
+  1. Create apps/backend/src/utils/dsa/priorityQueue.ts:
+
+       CLASS: PriorityQueue<T>
+         Internal storage: T[] (heap array)
+
+         Methods:
+           insert(item: T, priority: number): void
+             - Add to end of heap
+             - Bubble up (heapify up): O(log N)
+
+           extractMin(): T
+             - Return root (min priority)
+             - Replace root with last element
+             - Sink down (heapify down): O(log N)
+
+           peek(): T
+             - Return root without removing: O(1)
+
+           size(): number
+           isEmpty(): boolean
+
+           private heapifyUp(index): void
+           private heapifyDown(index): void
+           private swap(i, j): void
+           private parent(i): number
+           private leftChild(i): number
+           private rightChild(i): number
+
+       USAGE IN FLOWFORGE:
+         - Schedule delayed tasks by priority
+         - Process tasks in order: HIGH → MEDIUM → LOW
+         - Handle timed retries (earliest retry first)
+
+  2. Create apps/backend/src/utils/dsa/taskScheduler.ts:
+       - Uses PriorityQueue internally
+       - scheduleTask(task, priority, executeAt)
+       - getNextTask(): returns highest priority task ready to execute
+       - Integrates with Inngest for actual execution
+
+  3. Write unit tests:
+       - Insert items in random order
+       - Extract in sorted order
+       - Handle equal priorities (FIFO)
+       - Handle empty queue edge cases
+
+FILES TO CREATE:
+  - apps/backend/src/utils/dsa/priorityQueue.ts
+  - apps/backend/src/utils/dsa/taskScheduler.ts
+  - apps/backend/src/utils/dsa/__tests__/priorityQueue.test.ts
+
+OUTCOME:
+  Priority-based task scheduling works. High-priority tasks always
+  execute before low-priority tasks. Ready for Inngest integration.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 16 – TOKEN BUCKET RATE LIMITER IMPLEMENTATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Implement the Token Bucket algorithm from scratch for rate limiting.
+  This is both a DSA showcase and production abuse protection.
+
+TASKS:
+  1. Create apps/backend/src/utils/dsa/tokenBucket.ts:
+
+       CLASS: TokenBucket
+         Properties:
+           capacity: number (max tokens)
+           tokens: number (current tokens)
+           refillRate: number (tokens per second)
+           lastRefill: number (timestamp ms)
+
+         Methods:
+           consume(tokens = 1): boolean
+             - Refill tokens since lastRefill:
+                 elapsed = now - lastRefill
+                 tokensToAdd = elapsed * refillRate / 1000
+                 tokens = min(capacity, tokens + tokensToAdd)
+                 lastRefill = now
+             - If tokens >= requested: subtract, return true
+             - Else: return false (rate limited)
+
+           getStatus(): { tokens, capacity, refillRate, nextRefillMs }
+
+  2. Create apps/backend/src/utils/dsa/distributedTokenBucket.ts:
+       - Same algorithm but stores state in Redis
+       - Uses Redis atomic operations (MULTI/EXEC) for thread safety
+       - Key pattern: ratelimit:{userId}:{route}
+
+  3. Create apps/backend/src/middleware/rateLimiter.ts:
+       - Factory: createRateLimiter(options)
+       - Options: { capacity, refillRate, keyFn }
+       - Returns Express middleware
+       - On limit exceeded: 429 Too Many Requests with Retry-After header
+       - Sets X-RateLimit-Limit, X-RateLimit-Remaining headers
+
+  4. Apply to routes:
+       - Global: 100 req/min per IP
+       - Auth routes: 10 req/min per IP
+       - Workflow execution: 10 per hour per workspace
+       - AI generation: 20 per day per user
+
+  5. Write unit tests for both implementations:
+       - Full bucket allows all requests
+       - Empty bucket blocks requests
+       - Bucket refills correctly over time
+
+FILES TO CREATE:
+  - apps/backend/src/utils/dsa/tokenBucket.ts
+  - apps/backend/src/utils/dsa/distributedTokenBucket.ts
+  - apps/backend/src/middleware/rateLimiter.ts
+  - apps/backend/src/utils/dsa/__tests__/tokenBucket.test.ts
+
+OUTCOME:
+  Rate limiting protects all routes. Token bucket refills smoothly.
+  Distributed version works across multiple backend instances.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 17 – DAG VALIDATOR API & SERVICE INTEGRATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Expose the DAG validation algorithms through the API so the frontend
+  can validate workflows before saving or executing.
+
+TASKS:
+  1. Create apps/backend/src/services/dag.service.ts:
+       - validateWorkflowDAG(workflowId): validates from DB
+       - validateDagJson(dagJson): validates raw DAG input
+       - getExecutionOrder(dagJson): returns topological sort result
+       - identifyParallelGroups(dagJson):
+           Groups tasks that can run in parallel (same depth in DAG)
+       - calculateCriticalPath(dagJson, taskDurations):
+           Finds longest path (critical path analysis)
+
+  2. Create apps/backend/src/controllers/dag.controller.ts:
+       - validateWorkflow(): POST /api/workflows/:id/validate
+       - getExecutionPlan(): GET /api/workflows/:id/execution-plan
+           Returns: { order, parallelGroups, criticalPath }
+
+  3. Create apps/backend/src/routes/dag.routes.ts
+  4. Register routes under /api/workflows
+
+  5. Write integration tests:
+       - Valid workflow returns execution plan
+       - Cyclic workflow returns 400 with cycle path
+       - Empty workflow returns appropriate error
+
+FILES TO CREATE:
+  - apps/backend/src/services/dag.service.ts
+  - apps/backend/src/controllers/dag.controller.ts
+  - apps/backend/src/routes/dag.routes.ts
+
+OUTCOME:
+  Frontend can call /validate before saving. Execution engine gets
+  exact parallel groups and ordering from the DAG service.
+
+================================================================================
+                    SECTION 4: WORKFLOW BUILDER (FRONTEND)
+                             PHASES 18 – 24
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 18 – FRONTEND API CLIENT & STATE MANAGEMENT SETUP
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Set up Axios API client with Clerk auth headers, React Query for
+  server state, and Zustand for client state.
+
+TASKS:
+  1. Create apps/frontend/src/lib/apiClient.ts:
+       - Axios instance with baseURL from env
+       - Request interceptor: attach Clerk session token to headers
+       - Response interceptor: handle 401 (redirect to sign-in)
+       - Response interceptor: handle 429 (show rate limit toast)
+       - Default timeout: 30 seconds
+
+  2. Create apps/frontend/src/lib/queryClient.ts:
+       - TanStack Query client
+       - Default staleTime: 2 minutes
+       - Default retry: 2
+       - Default onError: show error toast
+
+  3. Wrap app in QueryClientProvider in layout.tsx
+
+  4. Create apps/frontend/src/stores/authStore.ts (Zustand):
+       - State: { user, workspaces, activeWorkspace }
+       - Actions: setUser, setWorkspaces, setActiveWorkspace, reset
+
+  5. Create apps/frontend/src/stores/uiStore.ts (Zustand):
+       - State: { sidebarOpen, activeModal, loading }
+       - Actions: toggleSidebar, openModal, closeModal, setLoading
+
+  6. Create apps/frontend/src/hooks/api/:
+       - useWorkspaces.ts: useQuery for workspace list
+       - useWorkspace.ts: useQuery for single workspace
+       - useCreateWorkspace.ts: useMutation
+       - useWorkflows.ts: useQuery for workflow list
+       - useWorkflow.ts: useQuery for single workflow
+       - useCreateWorkflow.ts: useMutation
+       - useUpdateWorkflow.ts: useMutation
+
+FILES TO CREATE:
+  - apps/frontend/src/lib/apiClient.ts
+  - apps/frontend/src/lib/queryClient.ts
+  - apps/frontend/src/stores/authStore.ts
+  - apps/frontend/src/stores/uiStore.ts
+  - apps/frontend/src/hooks/api/useWorkspaces.ts
+  - apps/frontend/src/hooks/api/useWorkflows.ts
+  - apps/frontend/src/hooks/api/useWorkflow.ts
+
+OUTCOME:
+  All API calls are centralized. Auth headers attached automatically.
+  Optimistic updates, loading states, and error handling are automatic.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 19 – DASHBOARD LAYOUT & NAVIGATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Build the main dashboard layout with sidebar navigation, workspace
+  switcher, and user menu.
+
+TASKS:
+  1. Create apps/frontend/src/app/(dashboard)/layout.tsx:
+       - Protected layout (requires auth)
+       - Sidebar + main content area
+       - Responsive: sidebar collapses on mobile (Sheet component)
+
+  2. Create apps/frontend/src/components/layout/Sidebar.tsx:
+       - Logo at top
+       - Navigation links:
+           Dashboard, Workflows, Executions, Team, Settings
+       - Active route highlighting
+       - Workspace switcher at bottom
+       - User avatar + name + sign out button
+
+  3. Create apps/frontend/src/components/layout/WorkspaceSwitcher.tsx:
+       - Dropdown showing all user workspaces
+       - Active workspace highlighted
+       - "Create workspace" option at bottom
+       - Updates activeWorkspace in Zustand store
+
+  4. Create apps/frontend/src/components/layout/TopBar.tsx:
+       - Breadcrumb navigation
+       - Search bar (placeholder for now)
+       - Notification bell (placeholder)
+       - User profile button
+
+  5. Create apps/frontend/src/app/(dashboard)/dashboard/page.tsx:
+       - Overview stats: total workflows, executions this week,
+         success rate, active executions
+       - Recent workflows list (last 5)
+       - Recent executions list (last 5)
+       - Quick action buttons
+
+  6. Apply dark mode styling using CSS variables throughout
+
+FILES TO CREATE:
+  - apps/frontend/src/app/(dashboard)/layout.tsx
+  - apps/frontend/src/components/layout/Sidebar.tsx
+  - apps/frontend/src/components/layout/WorkspaceSwitcher.tsx
+  - apps/frontend/src/components/layout/TopBar.tsx
+  - apps/frontend/src/app/(dashboard)/dashboard/page.tsx
+
+OUTCOME:
+  Full dashboard layout renders. Navigation works. Workspace switcher
+  changes context. Responsive on mobile.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 20 – WORKFLOW LIST PAGE & WORKFLOW API ROUTES (BACKEND)
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Build the workflow management API and the workflow list page
+  where users can create, view, and manage workflows.
+
+TASKS:
+  BACKEND:
+  1. Create apps/backend/src/controllers/workflow.controller.ts:
+       - createWorkflow(): POST /api/workspaces/:wsId/workflows
+       - getWorkflows(): GET /api/workspaces/:wsId/workflows
+           Supports: ?status=active&tag=prod&page=1&limit=20
+       - getWorkflowById(): GET /api/workflows/:id
+       - updateWorkflow(): PATCH /api/workflows/:id (metadata only)
+       - deleteWorkflow(): DELETE /api/workflows/:id
+       - duplicateWorkflow(): POST /api/workflows/:id/duplicate
+       - saveDagJson(): PUT /api/workflows/:id/dag
+           Validates DAG before saving + increments version
+
+  2. Create apps/backend/src/services/workflow.service.ts:
+       - createWorkflow(data, workspaceId, userId)
+       - updateWorkflow(id, data, userId): validates ownership
+       - saveDag(id, dagJson): validates with dag.service, saves
+       - duplicateWorkflow(id, userId): creates copy with " (copy)" suffix
+
+  3. Create apps/backend/src/routes/workflow.routes.ts
+
+  FRONTEND:
+  4. Create apps/frontend/src/app/(dashboard)/workflows/page.tsx:
+       - Grid/list of workflow cards
+       - Filter tabs: All / Active / Draft / Archived
+       - Search input (filters by name)
+       - Sort by: Updated, Created, Name
+       - Empty state with CTA to create first workflow
+       - Loading skeleton state
+
+  5. Create apps/frontend/src/components/workflow/WorkflowCard.tsx:
+       - Name, description, status badge
+       - Tags list
+       - Last updated date
+       - Execution count
+       - Three-dot menu: Edit, Duplicate, Archive, Delete
+
+  6. Create apps/frontend/src/components/workflow/CreateWorkflowDialog.tsx:
+       - Modal with name and description inputs
+       - On submit: calls createWorkflow mutation
+       - On success: redirects to /workflows/{id}/builder
+
+FILES TO CREATE:
+  - apps/backend/src/controllers/workflow.controller.ts
+  - apps/backend/src/services/workflow.service.ts
+  - apps/backend/src/routes/workflow.routes.ts
+  - apps/frontend/src/app/(dashboard)/workflows/page.tsx
+  - apps/frontend/src/components/workflow/WorkflowCard.tsx
+  - apps/frontend/src/components/workflow/CreateWorkflowDialog.tsx
+
+OUTCOME:
+  Workflows can be created, listed, and managed from the UI.
+  API fully secured with auth and validation.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 21 – REACT FLOW DAG BUILDER – CORE CANVAS
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Build the drag-and-drop DAG workflow builder canvas using React Flow.
+  Users can add nodes, draw edges, and build workflow graphs visually.
+
+TASKS:
+  1. Create apps/frontend/src/app/(dashboard)/workflows/[id]/builder/page.tsx:
+       - Full-screen canvas layout
+       - Load workflow dagJson from API
+       - Pass nodes/edges to ReactFlow component
+
+  2. Create apps/frontend/src/components/dag-builder/WorkflowCanvas.tsx:
+       - ReactFlow instance with:
+           nodes, edges, onNodesChange, onEdgesChange, onConnect
+       - Controls: zoom in/out, fit view, mini-map toggle
+       - Background: dot grid pattern
+       - Panel: toolbar (top-left)
+       - MiniMap (bottom-right)
+       - Custom edge type: smoothstep with arrow markers
+
+  3. Create custom node types:
+       apps/frontend/src/components/dag-builder/nodes/:
+
+       ManualTaskNode.tsx:
+         - Purple border, hand icon
+         - Shows: task name, description
+         - Connection handles: top (target), bottom (source)
+         - Selected state: highlighted border
+
+       AutomatedTaskNode.tsx:
+         - Blue border, bot icon
+         - Shows: task name, execution type
+
+       ApiTaskNode.tsx:
+         - Green border, globe icon
+         - Shows: task name, endpoint preview
+
+       ConditionNode.tsx:
+         - Orange border, git-branch icon
+         - Diamond shape
+         - Two outputs: true/false handles
+
+       DelayNode.tsx:
+         - Yellow border, clock icon
+         - Shows: delay duration
+
+       StartNode.tsx:
+         - Green circle, play icon
+         - Only source handle (no target)
+
+       EndNode.tsx:
+         - Red circle, stop icon
+         - Only target handle (no source)
+
+  4. Create apps/frontend/src/components/dag-builder/NodePalette.tsx:
+       - Left sidebar panel
+       - Draggable node type cards
+       - Categories: Triggers, Tasks, Logic, Integrations
+       - Drag to canvas creates new node
+
+  5. Handle drag-and-drop from palette to canvas:
+       - onDragOver, onDrop handlers on ReactFlow
+       - Generate unique node ID: `node_${Date.now()}`
+       - Place at drop position
+
+FILES TO CREATE:
+  - apps/frontend/src/app/(dashboard)/workflows/[id]/builder/page.tsx
+  - apps/frontend/src/components/dag-builder/WorkflowCanvas.tsx
+  - apps/frontend/src/components/dag-builder/nodes/ManualTaskNode.tsx
+  - apps/frontend/src/components/dag-builder/nodes/AutomatedTaskNode.tsx
+  - apps/frontend/src/components/dag-builder/nodes/ApiTaskNode.tsx
+  - apps/frontend/src/components/dag-builder/nodes/ConditionNode.tsx
+  - apps/frontend/src/components/dag-builder/nodes/DelayNode.tsx
+  - apps/frontend/src/components/dag-builder/nodes/StartNode.tsx
+  - apps/frontend/src/components/dag-builder/nodes/EndNode.tsx
+  - apps/frontend/src/components/dag-builder/NodePalette.tsx
+
+OUTCOME:
+  Users can drag nodes onto canvas, connect them with edges.
+  Canvas has zoom, minimap, and grid background.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 22 – NODE CONFIGURATION PANEL & DAG SAVE
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  When a node is selected, show a configuration panel where users
+  can set task properties. Auto-save and manual save implemented.
+
+TASKS:
+  1. Create apps/frontend/src/components/dag-builder/NodeConfigPanel.tsx:
+       - Slides in from right when node is selected
+       - Close button
+       - Renders different form based on node type
+
+  2. Create config form components:
+       ManualTaskConfig.tsx:
+         - Name input (required)
+         - Description textarea
+         - Assignee selector (workspace members)
+         - Due date picker
+         - Priority select
+
+       AutomatedTaskConfig.tsx:
+         - Name input
+         - Script/command input
+         - Environment variables editor (key-value pairs)
+         - Timeout input
+
+       ApiTaskConfig.tsx:
+         - Name input
+         - Method select (GET/POST/PUT/DELETE)
+         - URL input
+         - Headers editor (key-value pairs)
+         - Body editor (JSON)
+         - Auth selector
+
+       ConditionConfig.tsx:
+         - Name input
+         - Condition expression builder
+         - True label, False label inputs
+
+       DelayConfig.tsx:
+         - Name input
+         - Duration input + unit select (seconds/minutes/hours/days)
+
+  3. Create apps/frontend/src/stores/workflowBuilderStore.ts (Zustand):
+       - State: { nodes, edges, selectedNodeId, isDirty, isSaving }
+       - Actions: setNodes, setEdges, selectNode, markDirty, markSaved
+       - updateNodeData(nodeId, data): updates node config in place
+
+  4. Auto-save behavior:
+       - Debounce: 2 seconds after last change
+       - Calls PUT /api/workflows/:id/dag
+       - Show saving indicator in topbar
+       - On success: markSaved(), increment version display
+
+  5. Manual save: Ctrl+S shortcut + Save button
+
+  6. Undo/Redo:
+       - Maintain history stack in Zustand (max 50 states)
+       - Ctrl+Z: undo, Ctrl+Shift+Z: redo
+       - UI buttons in toolbar
+
+FILES TO CREATE:
+  - apps/frontend/src/components/dag-builder/NodeConfigPanel.tsx
+  - apps/frontend/src/components/dag-builder/config/ManualTaskConfig.tsx
+  - apps/frontend/src/components/dag-builder/config/AutomatedTaskConfig.tsx
+  - apps/frontend/src/components/dag-builder/config/ApiTaskConfig.tsx
+  - apps/frontend/src/components/dag-builder/config/ConditionConfig.tsx
+  - apps/frontend/src/components/dag-builder/config/DelayConfig.tsx
+  - apps/frontend/src/stores/workflowBuilderStore.ts
+
+OUTCOME:
+  Click any node → config panel opens. Change settings → auto-saves.
+  Undo/redo works for all canvas operations.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 23 – DAG VALIDATION UI & WORKFLOW TOOLBAR
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Add workflow validation with visual feedback on the canvas.
+  Build the full toolbar with all workflow actions.
+
+TASKS:
+  1. Create apps/frontend/src/components/dag-builder/WorkflowToolbar.tsx:
+       - Left: workflow name (editable inline)
+       - Center: version badge, status badge
+       - Right: Validate, Save, Execute, Share buttons
+
+  2. Implement Validate button:
+       - Calls POST /api/workflows/:id/validate
+       - On success: show green toast "Workflow is valid"
+           Highlight execution order on canvas (numbered badges on nodes)
+       - On error: show red toast "Validation failed"
+           Highlight nodes involved in cycle with red border
+           Show error panel below toolbar with details
+
+  3. Create apps/frontend/src/components/dag-builder/ValidationPanel.tsx:
+       - Collapsible panel showing validation results
+       - Error list with clickable items (click → pan to node)
+       - Warning list
+       - Execution order preview
+
+  4. Visual execution order overlay:
+       - After successful validation
+       - Show numbered badge on each node (execution step number)
+       - Color-code parallel groups (same step number = same color)
+       - Dismiss overlay button
+
+  5. Create apps/frontend/src/components/dag-builder/BuilderHeader.tsx:
+       - Back button → /workflows
+       - Breadcrumb: Workspaces > WorkflowName
+       - Collaborators avatars (live users on this workflow)
+       - Last saved timestamp
+       - All toolbar actions
+
+FILES TO CREATE:
+  - apps/frontend/src/components/dag-builder/WorkflowToolbar.tsx
+  - apps/frontend/src/components/dag-builder/ValidationPanel.tsx
+  - apps/frontend/src/components/dag-builder/BuilderHeader.tsx
+
+OUTCOME:
+  Users see validation errors highlighted on canvas. Execution order
+  is visualized. Toolbar gives access to all workflow actions.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 24 – WORKFLOW TEMPLATES & IMPORT/EXPORT
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Allow users to start from pre-built templates and import/export
+  workflows as JSON files.
+
+TASKS:
+  1. Create seed data with 5 built-in workflow templates:
+       - Content Publishing Pipeline (Write → Review → Approve → Publish)
+       - Software Release (Test → Build → Stage → QA → Deploy)
+       - Customer Onboarding (Welcome Email → Setup Call → Trial → Convert)
+       - Data Processing (Ingest → Validate → Transform → Load → Report)
+       - Incident Response (Detect → Alert → Assign → Resolve → Postmortem)
+
+  2. Backend: seed templates into DB on startup if none exist
+     (apps/backend/src/scripts/seedTemplates.ts)
+
+  3. Backend route: GET /api/templates → returns template workflows
+
+  4. Frontend: Template Gallery in Create Workflow dialog:
+       - Grid of template cards with preview thumbnails
+       - Or "Start from scratch" option
+       - Search/filter templates
+       - On select: POST /api/workflows with template dagJson
+
+  5. Export workflow:
+       - Button in toolbar: "Export JSON"
+       - Downloads workflow dagJson as .json file
+       - Filename: {workflow-name}-v{version}.json
+
+  6. Import workflow:
+       - Button: "Import from JSON"
+       - File input accepts .json
+       - Validates structure before importing
+       - Creates new workflow from imported data
+
+FILES TO CREATE:
+  - apps/backend/src/scripts/seedTemplates.ts
+  - apps/backend/src/data/templates/ (5 template JSON files)
+  - apps/backend/src/routes/template.routes.ts
+  - apps/frontend/src/components/workflow/TemplateGallery.tsx
+  - apps/frontend/src/components/workflow/ImportExportButtons.tsx
+
+OUTCOME:
+  New users can start with templates instead of blank canvas.
+  Workflows can be shared as JSON files between teams.
+
+================================================================================
+                  SECTION 5: REAL-TIME COLLABORATION
+                             PHASES 25 – 29
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 25 – SOCKET.IO SERVER SETUP & CONNECTION MANAGEMENT
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Set up Socket.io with Redis adapter for horizontal scaling.
+  Handle connection, authentication, and room management.
+
+TASKS:
+  1. Install: socket.io, @socket.io/redis-adapter, ioredis
+
+  2. Create apps/backend/src/socket/server.ts:
+       - Create Socket.io server attached to HTTP server
+       - Configure CORS for frontend origin
+       - Attach Redis adapter:
+           const pubClient = redis.duplicate()
+           const subClient = redis.duplicate()
+           io.adapter(createAdapter(pubClient, subClient))
+
+  3. Create apps/backend/src/socket/middleware/socketAuth.ts:
+       - Middleware that validates Clerk token on connection
+       - Extracts userId from token
+       - Attaches userId to socket.data
+       - Disconnects unauthenticated sockets
+
+  4. Create apps/backend/src/socket/handlers/connectionHandler.ts:
+       - On connect: log user connected
+       - On disconnect: cleanup presence, notify room
+       - On error: log and disconnect
+
+  5. Create apps/backend/src/socket/roomManager.ts:
+       - joinWorkflowRoom(socket, workflowId):
+           socket.join(`workflow:${workflowId}`)
+       - leaveWorkflowRoom(socket, workflowId)
+       - getRoomUsers(workflowId): list of connected users
+       - broadcastToWorkflow(workflowId, event, data)
+
+  6. Define SOCKET_EVENTS constants in shared config:
+       // Collaboration events
+       JOIN_WORKFLOW, LEAVE_WORKFLOW
+       USER_JOINED, USER_LEFT
+       CURSOR_MOVED
+       NODE_UPDATED, NODE_DELETED, NODE_ADDED
+       EDGE_UPDATED, EDGE_DELETED, EDGE_ADDED
+       DAG_SAVED
+       // Execution events
+       EXECUTION_STARTED, EXECUTION_UPDATED, EXECUTION_COMPLETED
+       TASK_STARTED, TASK_COMPLETED, TASK_FAILED
+
+  7. Initialize Socket.io in src/index.ts
+
+FILES TO CREATE:
+  - apps/backend/src/socket/server.ts
+  - apps/backend/src/socket/middleware/socketAuth.ts
+  - apps/backend/src/socket/handlers/connectionHandler.ts
+  - apps/backend/src/socket/roomManager.ts
+
+OUTCOME:
+  Socket.io server runs with Redis adapter. Authentication works.
+  Multiple backend instances share socket state via Redis.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 26 – REAL-TIME COLLABORATION EVENTS (BACKEND)
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Handle all collaboration events: presence tracking, cursor positions,
+  and live DAG updates from multiple users.
+
+TASKS:
+  1. Create apps/backend/src/socket/handlers/collaborationHandler.ts:
+
+       Handle JOIN_WORKFLOW:
+         - Verify user has access to workflow
+         - Join room
+         - Store presence in Redis:
+             HSET presence:{workflowId} {userId} {name, avatar, color, cursor}
+         - Emit USER_JOINED to room with user info
+         - Emit current presence list to joining user
+
+       Handle LEAVE_WORKFLOW:
+         - Leave room
+         - Remove from Redis presence:
+             HDEL presence:{workflowId} {userId}
+         - Emit USER_LEFT to room
+
+       Handle CURSOR_MOVED:
+         - Update cursor in Redis presence
+         - Broadcast CURSOR_MOVED to room (excluding sender)
+         - Data: { userId, x, y, nodeId? }
+
+       Handle NODE_UPDATED:
+         - Save change to DB (debounced, 500ms)
+         - Broadcast to room (excluding sender) immediately
+         - Include: { userId, nodeId, changes, timestamp }
+
+       Handle NODE_ADDED:
+         - Add node to workflow dagJson in DB
+         - Broadcast to room
+
+       Handle NODE_DELETED:
+         - Remove node + connected edges from dagJson
+         - Broadcast to room
+
+       Handle EDGE_ADDED / EDGE_DELETED:
+         - Update dagJson in DB
+         - Broadcast to room
+
+  2. Create apps/backend/src/socket/presenceManager.ts:
+       - Assign unique color to each user (from preset palette)
+       - getPresence(workflowId): returns all active users
+       - updatePresence(workflowId, userId, data): updates Redis
+       - clearPresence(workflowId, userId): on disconnect
+
+  3. Conflict resolution strategy (Last Write Wins + operational locks):
+       - Redis lock: when user starts editing a node, lock it for 5s
+       - Lock key: lock:node:{nodeId}
+       - Other users see "locked" indicator on that node
+       - Lock releases on edit complete or timeout
+
+FILES TO CREATE:
+  - apps/backend/src/socket/handlers/collaborationHandler.ts
+  - apps/backend/src/socket/presenceManager.ts
+
+OUTCOME:
+  Multiple users can edit the same workflow simultaneously.
+  Changes propagate to all connected users in real-time.
+  Conflicts are handled with simple locking.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 27 – SOCKET.IO CLIENT SETUP (FRONTEND)
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Connect the frontend to the Socket.io server with auth,
+  automatic reconnection, and event handling.
+
+TASKS:
+  1. Create apps/frontend/src/lib/socket.ts:
+       - Create socket instance (not connected yet)
+       - Configure: transports, reconnection, timeout
+       - Auth function: provides Clerk token on connection
+       - Export singleton socket
+
+  2. Create apps/frontend/src/hooks/useSocket.ts:
+       - Connects socket on mount, disconnects on unmount
+       - Handles reconnection events
+       - Returns: { socket, isConnected }
+
+  3. Create apps/frontend/src/hooks/useWorkflowCollaboration.ts:
+       - Joins workflow room on mount
+       - Leaves on unmount
+       - Handles all collaboration events
+       - Updates workflowBuilderStore with remote changes
+       - Returns: { collaborators, sendCursorPosition, sendNodeUpdate }
+
+  4. Create apps/frontend/src/stores/collaborationStore.ts (Zustand):
+       - State: {
+           collaborators: Map<userId, { name, avatar, color, cursor }>,
+           lockedNodes: Map<nodeId, userId>
+         }
+       - Actions: setCollaborator, removeCollaborator, updateCursor,
+                  lockNode, unlockNode
+
+  5. Optimistic updates:
+       - When local user changes a node: update UI immediately
+       - Send socket event
+       - If server rejects (conflict): revert UI change
+
+FILES TO CREATE:
+  - apps/frontend/src/lib/socket.ts
+  - apps/frontend/src/hooks/useSocket.ts
+  - apps/frontend/src/hooks/useWorkflowCollaboration.ts
+  - apps/frontend/src/stores/collaborationStore.ts
+
+OUTCOME:
+  Frontend connects to socket server. Joins workflow room on builder
+  open. Receives and applies remote changes in real-time.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 28 – LIVE CURSORS & PRESENCE UI
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Show live cursors of other users on the canvas. Show presence
+  indicators (avatars) in the header. Show node lock indicators.
+
+TASKS:
+  1. Create apps/frontend/src/components/collaboration/LiveCursors.tsx:
+       - Renders on top of ReactFlow canvas (absolute positioned)
+       - For each collaborator with cursor position:
+           - Colored cursor SVG (unique color per user)
+           - Name label next to cursor
+           - Smooth animation using CSS transitions
+       - Updates 60fps by listening to collaborationStore
+
+  2. Send local cursor position:
+       - Throttle to 30fps (every 33ms)
+       - Track mouse position relative to ReactFlow viewport
+       - Transform screen coords to flow coords using reactflow's
+         screenToFlowPosition()
+       - Emit CURSOR_MOVED event
+
+  3. Create apps/frontend/src/components/collaboration/PresenceBar.tsx:
+       - In BuilderHeader, show avatar stack of active collaborators
+       - Max 5 visible, "+N more" for overflow
+       - Hover tooltip: user name + "Currently editing"
+       - Each avatar has unique color border matching their cursor
+
+  4. Create apps/frontend/src/components/collaboration/NodeLockIndicator.tsx:
+       - Overlay on locked nodes
+       - Shows avatar of user who locked it
+       - "Locked by [name]" tooltip
+       - Slight opacity on locked nodes
+
+  5. Collaborator color assignment:
+       - 10 preset vivid colors (never repeat in a session)
+       - Assigned server-side, stored in Redis presence data
+
+FILES TO CREATE:
+  - apps/frontend/src/components/collaboration/LiveCursors.tsx
+  - apps/frontend/src/components/collaboration/PresenceBar.tsx
+  - apps/frontend/src/components/collaboration/NodeLockIndicator.tsx
+
+OUTCOME:
+  Open same workflow in two browsers → see each other's cursors move.
+  Presence avatars shown in header. Locked nodes visually indicated.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 29 – ACTIVITY FEED & COLLABORATION HISTORY
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Show real-time activity feed of what collaborators are doing.
+  Persistent history of workflow changes.
+
+TASKS:
+  1. Create apps/backend/src/socket/handlers/activityHandler.ts:
+       - On each collaboration event: create activity entry
+       - Store in Redis list: activity:{workflowId} (max 100 items)
+       - Emit ACTIVITY_CREATED to room
+       - Format: { userId, userName, action, target, timestamp }
+
+  2. Backend route: GET /api/workflows/:id/activity
+       - Returns last 50 activity entries
+
+  3. Create apps/frontend/src/components/collaboration/ActivityFeed.tsx:
+       - Slide-out panel (right side)
+       - Triggered by "Activity" button in header
+       - Shows real-time stream of actions:
+           "[User] added node API Call"
+           "[User] connected Task A to Task B"
+           "[User] saved the workflow"
+       - Relative timestamps (2 min ago)
+       - Auto-scrolls to latest
+
+  4. Create apps/frontend/src/hooks/useActivityFeed.ts:
+       - Fetches initial history from API
+       - Subscribes to ACTIVITY_CREATED socket events
+       - Prepends new activities to list
+
+FILES TO CREATE:
+  - apps/backend/src/socket/handlers/activityHandler.ts
+  - apps/frontend/src/components/collaboration/ActivityFeed.tsx
+  - apps/frontend/src/hooks/useActivityFeed.ts
+
+OUTCOME:
+  Activity panel shows real-time log of all changes. Persistent
+  history available via API. Collaborators see each other's actions.
+
+================================================================================
+               SECTION 6: WORKFLOW EXECUTION ENGINE
+                             PHASES 30 – 36
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 30 – INNGEST SETUP & INTEGRATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Set up Inngest as the primary background job and workflow execution
+  engine. Connect to backend and configure all required functions.
+
+TASKS:
+  1. Sign up for Inngest (free tier: 50K executions/month)
+  2. Install: npm install inngest
+
+  3. Create apps/backend/src/inngest/client.ts:
+       - Initialize Inngest client with app name and event key
+       - Configure: id: 'flowforge', signingKey, eventKey
+
+  4. Create apps/backend/src/inngest/index.ts:
+       - Export serve() handler for all Inngest functions
+       - Register endpoint: POST /api/inngest
+
+  5. Register Inngest endpoint in Express:
+       app.use('/api/inngest', serve({ client, functions: [...] }))
+
+  6. Create apps/backend/src/inngest/functions/index.ts:
+       - Export array of all registered Inngest functions
+
+  7. Test with Inngest Dev Server:
+       npx inngest-cli@latest dev
+       Visit http://localhost:8288 for local dashboard
+
+  8. Create apps/backend/src/inngest/types.ts:
+       - Define all Inngest event types with TypeScript:
+           'workflow/execute': { workflowId, triggeredBy, input }
+           'workflow/cancel': { executionId }
+           'task/execute': { executionId, nodeId, taskConfig }
+           'task/retry': { executionId, nodeId, retryCount }
+           'workflow/scheduled': { workflowId, scheduledBy }
+
+FILES TO CREATE:
+  - apps/backend/src/inngest/client.ts
+  - apps/backend/src/inngest/index.ts
+  - apps/backend/src/inngest/functions/index.ts
+  - apps/backend/src/inngest/types.ts
+
+OUTCOME:
+  Inngest is connected. Functions are registered. Local dashboard works.
+  Events can be sent and processed.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 31 – WORKFLOW EXECUTION ENGINE (CORE)
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Build the core workflow execution engine using Inngest.
+  Execute tasks in topological order with parallel execution support.
+
+TASKS:
+  1. Create apps/backend/src/inngest/functions/executeWorkflow.ts:
+       Inngest function: 'workflow/execute'
+
+       Steps:
+         step 1: 'load-workflow'
+           - Fetch workflow from DB
+           - Validate DAG (cycle detection)
+           - Get execution order (topological sort)
+
+         step 2: 'create-execution-record'
+           - Create Execution document in DB
+           - Status: 'running', startedAt: now
+
+         step 3: 'execute-tasks-in-order'
+           - Group tasks by topological level (parallel groups)
+           - For each level:
+               - Execute all tasks in level concurrently:
+                   await Promise.all(level.map(nodeId =>
+                     step.run(`execute-task-${nodeId}`, async () => {
+                       return await executeTask(nodeId, context)
+                     })
+                   ))
+               - Collect results
+               - If any task fails: handle based on failurePolicy
+                   (stop / continue / rollback)
+
+         step 4: 'finalize-execution'
+           - Update Execution status: 'completed' or 'failed'
+           - completedAt: now
+           - Calculate duration
+           - Emit socket event: EXECUTION_COMPLETED
+
+  2. Create apps/backend/src/services/taskExecutor.ts:
+       Factory Pattern: getExecutor(taskType) → TaskExecutor
+
+       Executors:
+         ManualTaskExecutor: marks as pending, notifies assignee
+         AutomatedTaskExecutor: runs predefined logic
+         ApiTaskExecutor: makes HTTP request with config
+         ConditionExecutor: evaluates condition, returns true/false
+         DelayExecutor: uses Inngest step.sleep()
+
+  3. Create apps/backend/src/inngest/functions/retryTask.ts:
+       Inngest function: 'task/retry'
+         - Check retry count against retryPolicy.maxRetries
+         - Calculate delay: exponential backoff
+         - step.sleep(delay)
+         - Re-execute task
+
+FILES TO CREATE:
+  - apps/backend/src/inngest/functions/executeWorkflow.ts
+  - apps/backend/src/services/taskExecutor.ts
+  - apps/backend/src/services/executors/manualTaskExecutor.ts
+  - apps/backend/src/services/executors/apiTaskExecutor.ts
+  - apps/backend/src/services/executors/conditionExecutor.ts
+  - apps/backend/src/services/executors/delayExecutor.ts
+  - apps/backend/src/inngest/functions/retryTask.ts
+
+OUTCOME:
+  Workflows execute in correct topological order. Parallel tasks run
+  concurrently. Retries work with exponential backoff.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 32 – EXECUTION API & TRIGGER SYSTEM
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Build the API to trigger, monitor, and cancel workflow executions.
+  Support manual trigger, webhook trigger, and scheduled trigger.
+
+TASKS:
+  1. Create apps/backend/src/controllers/execution.controller.ts:
+       - triggerExecution(): POST /api/workflows/:id/execute
+           Validates workflow, sends 'workflow/execute' Inngest event
+           Returns executionId immediately (async)
+       - getExecutions(): GET /api/workflows/:id/executions
+           Paginated list with filter by status
+       - getExecutionById(): GET /api/executions/:id
+           Full execution with all step results and logs
+       - cancelExecution(): POST /api/executions/:id/cancel
+           Sends 'workflow/cancel' event to Inngest
+       - getExecutionLogs(): GET /api/executions/:id/logs
+           Streaming logs (SSE)
+
+  2. Create apps/backend/src/services/execution.service.ts:
+       - triggerExecution(workflowId, triggeredBy, input)
+       - cancelExecution(executionId)
+       - getExecutionStatus(executionId)
+       - streamLogs(executionId, res): Server-Sent Events stream
+
+  3. Create webhook trigger:
+       - POST /api/webhooks/workflow/:token
+       - Validates webhook token
+       - Triggers workflow execution with webhook payload as input
+       - Token stored in workflow config
+
+  4. Emit Socket.io events during execution:
+       - On task start: TASK_STARTED { executionId, nodeId, taskName }
+       - On task complete: TASK_COMPLETED { executionId, nodeId, output }
+       - On task fail: TASK_FAILED { executionId, nodeId, error }
+       - On execution complete: EXECUTION_COMPLETED { executionId, status }
+
+FILES TO CREATE:
+  - apps/backend/src/controllers/execution.controller.ts
+  - apps/backend/src/services/execution.service.ts
+  - apps/backend/src/routes/execution.routes.ts
+
+OUTCOME:
+  Workflows can be triggered via API, webhook, or schedule.
+  Real-time progress updates via socket events.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 33 – CRON SCHEDULING & INNGEST CRON JOBS
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Allow workflows to run on a schedule using cron expressions.
+  Implement Inngest cron functions.
+
+TASKS:
+  1. Add schedule config to Workflow schema:
+       schedule: {
+         enabled: Boolean,
+         cronExpression: String (e.g., "0 9 * * 1-5"),
+         timezone: String,
+         nextRunAt: Date,
+         lastRunAt: Date
+       }
+
+  2. Create apps/backend/src/inngest/functions/cronScheduler.ts:
+       - Inngest cron function runs every minute: '* * * * *'
+       - Fetches all workflows with schedule.enabled = true
+       - For each due workflow:
+           nextRunAt <= now AND nextRunAt > lastRunAt
+         - Send 'workflow/execute' event
+         - Update lastRunAt, calculate nextRunAt
+
+  3. Create apps/backend/src/utils/cronParser.ts:
+       - Validate cron expression
+       - Calculate next run date from cron expression
+       - Returns human-readable description of cron
+
+  4. Backend API: PATCH /api/workflows/:id/schedule
+       - Enable/disable schedule
+       - Set cron expression
+       - Set timezone
+       - Validate cron expression before saving
+
+  5. Frontend: Schedule settings in workflow config panel
+       - Toggle: Enable Schedule
+       - Cron expression input with visual helper
+       - Timezone selector
+       - Next run time preview ("Next: Tomorrow at 9:00 AM")
+       - Recent runs list
+
+FILES TO CREATE:
+  - apps/backend/src/inngest/functions/cronScheduler.ts
+  - apps/backend/src/utils/cronParser.ts
+  - apps/backend/src/routes/schedule.routes.ts
+  - apps/frontend/src/components/workflow/ScheduleConfig.tsx
+
+OUTCOME:
+  Workflows run automatically on schedule. Cron expressions validated.
+  Next run time shown to user. Inngest manages reliable delivery.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 34 – EXECUTION MONITORING DASHBOARD
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Build real-time execution monitoring with live task status on canvas,
+  timeline view, and detailed log viewer.
+
+TASKS:
+  1. Create apps/frontend/src/app/(dashboard)/executions/page.tsx:
+       - List all executions across workspace
+       - Filter: status, workflow, date range
+       - Stats bar: total, running, success rate, avg duration
+       - Table with columns: workflow, status, triggered by, duration, date
+
+  2. Create apps/frontend/src/app/(dashboard)/executions/[id]/page.tsx:
+       - Execution detail view
+       - Status header: execution status + duration
+       - Tab 1: "Timeline" - visual execution timeline
+       - Tab 2: "DAG View" - read-only canvas with live status overlays
+       - Tab 3: "Logs" - scrollable log viewer
+
+  3. Create apps/frontend/src/components/execution/ExecutionTimeline.tsx:
+       - Gantt-style chart showing task execution times
+       - Color coded: blue=running, green=completed, red=failed, gray=pending
+       - Hover tooltip: task name, duration, output preview
+
+  4. Create apps/frontend/src/components/execution/LiveExecutionCanvas.tsx:
+       - Read-only ReactFlow canvas
+       - Overlays current execution status on each node:
+           Pending: gray border
+           Running: blue border + spinning indicator
+           Completed: green border + checkmark
+           Failed: red border + X mark
+       - Pulses on running tasks
+       - Updates live via socket events
+
+  5. Create apps/frontend/src/components/execution/LogViewer.tsx:
+       - Scrollable log stream
+       - Color coded by level: INFO (white), WARN (yellow), ERROR (red)
+       - Filter by nodeId
+       - Search within logs
+       - Download logs button
+       - Auto-scroll to bottom (with manual override)
+
+  6. Connect to socket events for live updates:
+       - Subscribe to TASK_STARTED, TASK_COMPLETED, TASK_FAILED
+       - Update node statuses in LiveExecutionCanvas
+       - Append new log entries to LogViewer
+
+FILES TO CREATE:
+  - apps/frontend/src/app/(dashboard)/executions/page.tsx
+  - apps/frontend/src/app/(dashboard)/executions/[id]/page.tsx
+  - apps/frontend/src/components/execution/ExecutionTimeline.tsx
+  - apps/frontend/src/components/execution/LiveExecutionCanvas.tsx
+  - apps/frontend/src/components/execution/LogViewer.tsx
+
+OUTCOME:
+  Users watch workflow execution in real-time on the canvas.
+  Task statuses update live. Full log history available.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 35 – CIRCUIT BREAKER & DISTRIBUTED LOCKING
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Implement Circuit Breaker pattern for API task execution and
+  Redis Redlock for exactly-once task execution guarantee.
+
+TASKS:
+  1. Create apps/backend/src/utils/circuitBreaker.ts:
+       States: CLOSED (normal) → OPEN (failing) → HALF_OPEN (testing)
+
+       CLASS: CircuitBreaker
+         Properties:
+           state: 'CLOSED' | 'OPEN' | 'HALF_OPEN'
+           failureCount: number
+           successCount: number
+           failureThreshold: 5 (open after 5 failures)
+           successThreshold: 2 (close after 2 successes)
+           timeout: 30000ms (try half-open after 30s)
+           lastFailureTime: number
+
+         Methods:
+           execute(fn): Promise<T>
+             - CLOSED: run fn, on failure increment count
+             - OPEN: throw CircuitOpenError immediately
+             - HALF_OPEN: run fn, on success → CLOSED, on failure → OPEN
+
+           getStatus(): { state, failureCount, nextRetryAt }
+
+       Per-service circuit breakers (external APIs, third-party calls)
+
+  2. Create apps/backend/src/utils/distributedLock.ts:
+       Redlock implementation using Redis:
+
+       CLASS: DistributedLock
+         acquire(resource, ttlMs): Promise<lock>
+           - SET key:resource uuid NX PX ttl
+           - Retry 3 times with 100ms delay
+           - Return lock object with extend() and release()
+
+         release(lock): Promise<void>
+           - Lua script: if GET key == uuid then DEL key
+           - Atomic release (prevents releasing wrong lock)
+
+         extend(lock, ttlMs): Promise<void>
+           - Extends TTL if still holding lock
+
+       Use for:
+         - Task execution: lock taskId before executing
+         - Cron trigger: lock workflowId to prevent double-trigger
+         - File upload processing: lock file during processing
+
+FILES TO CREATE:
+  - apps/backend/src/utils/circuitBreaker.ts
+  - apps/backend/src/utils/distributedLock.ts
+  - apps/backend/src/utils/__tests__/circuitBreaker.test.ts
+  - apps/backend/src/utils/__tests__/distributedLock.test.ts
+
+OUTCOME:
+  Failing external services don't cascade. Each task executes exactly
+  once even with multiple workers running.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 36 – SAGA PATTERN & ROLLBACK LOGIC
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Implement the Saga pattern for distributed transaction rollback.
+  When a workflow fails mid-execution, compensating actions run.
+
+TASKS:
+  1. Create apps/backend/src/services/saga.service.ts:
+
+       CLASS: WorkflowSaga
+         Properties:
+           steps: SagaStep[] (ordered list)
+           completedSteps: SagaStep[]
+
+         Interface SagaStep:
+           name: string
+           execute: () => Promise<any>
+           compensate: () => Promise<void> (rollback)
+
+         Methods:
+           execute(): Promise<void>
+             - Run steps in order
+             - Track completed steps
+             - On failure: run compensate() on all completed steps in reverse
+
+           rollback(): Promise<void>
+             - For each completed step (reverse order):
+                 await step.compensate()
+             - Log all compensation results
+
+  2. Implement compensating actions for each task type:
+       ApiTaskExecutor:
+         - compensate: call cleanup endpoint (if configured)
+
+       ManualTaskExecutor:
+         - compensate: notify assignee to disregard task
+
+       FileUploadTask:
+         - compensate: delete uploaded file from R2
+
+  3. Integrate saga into executeWorkflow Inngest function:
+       - Wrap execution in saga
+       - On failure: trigger rollback
+       - Log rollback actions in execution record
+
+  4. Frontend: show rollback status in execution view
+       - "Rollback executed" badge on failed executions
+       - Step-by-step rollback log in LogViewer
+
+FILES TO CREATE:
+  - apps/backend/src/services/saga.service.ts
+  - apps/backend/src/inngest/functions/rollbackExecution.ts
+
+OUTCOME:
+  Failed workflows clean up after themselves. Data integrity maintained
+  even when multi-step workflows fail midway.
+
+================================================================================
+                   SECTION 7: AI INTEGRATION & FILE HANDLING
+                             PHASES 37 – 40
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 37 – GEMINI AI INTEGRATION (NL → DAG GENERATION)
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Let users describe a workflow in natural language and auto-generate
+  the DAG structure using Gemini 2.5 Flash (free tier).
+
+TASKS:
+  1. Install: npm install @google/generative-ai
+
+  2. Create apps/backend/src/services/ai.service.ts:
+       - Initialize Gemini client with API key
+       - generateDAGFromText(description: string): Promise<DagJson>
+
+       Prompt engineering:
+         System prompt defines:
+           - JSON output format with nodes and edges
+           - Available node types and their configs
+           - Constraint: must be a valid DAG (no cycles)
+
+         User prompt: description of workflow
+
+         Post-process:
+           - Parse JSON response
+           - Validate with dagValidator
+           - If invalid: retry once with correction prompt
+           - Assign unique IDs to nodes
+           - Calculate initial positions for layout
+
+  3. Create apps/backend/src/services/ai.taskSuggestion.ts:
+       - Given existing DAG, suggest next tasks
+       - Given task name, suggest configuration values
+       - Given workflow type, suggest optimizations
+
+  4. Rate limiting: 20 AI requests per user per day
+       - Track in Redis: ai:requests:{userId}:{date}
+
+  5. Backend route: POST /api/ai/generate-dag
+       - Accepts: { description, workspaceId }
+       - Returns: { dagJson, suggestions, executionOrder }
+
+  6. Frontend: AI Generation Panel
+       - "✨ Generate with AI" button in workflow builder
+       - Textarea for description
+       - "Generate" button
+       - Shows generated DAG preview
+       - Confirm: replaces current canvas
+       - Remaining requests: "18/20 AI requests today"
+
+FILES TO CREATE:
+  - apps/backend/src/services/ai.service.ts
+  - apps/backend/src/services/ai.taskSuggestion.ts
+  - apps/backend/src/routes/ai.routes.ts
+  - apps/frontend/src/components/dag-builder/AiGenerationPanel.tsx
+
+OUTCOME:
+  User types "Content review and publish pipeline" → AI generates
+  a 5-node DAG automatically placed on the canvas.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 38 – AI SMART SUGGESTIONS & OPTIMIZATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Provide contextual AI suggestions while building workflows.
+  Suggestions appear as the user builds.
+
+TASKS:
+  1. Create apps/backend/src/services/ai.optimization.ts:
+       - analyzeWorkflow(dagJson): finds potential issues
+           - Bottlenecks (sequential tasks that could be parallel)
+           - Missing error handling nodes
+           - Unreachable nodes
+           - Inefficient task ordering
+       - Returns: { issues, suggestions, optimizedDagJson? }
+
+  2. Backend route: POST /api/ai/optimize-workflow
+       - Accepts: { workflowId }
+       - Returns: { analysis, suggestions }
+
+  3. Frontend: Suggestions panel in builder
+       - Small lightbulb icon in toolbar
+       - Click → shows AI suggestions list
+       - Each suggestion: description + "Apply" button
+       - "Apply" button: executes suggested change on canvas
+
+  4. Context-aware suggestions while adding nodes:
+       - After adding an API node: suggest "Add error handling node"
+       - After connecting 5+ sequential nodes: suggest "Consider parallelizing"
+       - After adding a delay: suggest "Consider if delay is truly needed"
+
+  5. Autocomplete for task names:
+       - As user types node name, show AI completions
+       - 3 suggestions below input
+
+FILES TO CREATE:
+  - apps/backend/src/services/ai.optimization.ts
+  - apps/backend/src/routes/ai.routes.ts (add endpoints)
+  - apps/frontend/src/components/dag-builder/AiSuggestionsPanel.tsx
+
+OUTCOME:
+  AI actively helps users build better workflows with real-time
+  suggestions and one-click optimizations.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 39 – FILE UPLOAD & CLOUDFLARE R2 INTEGRATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Allow task configurations to reference files stored in Cloudflare R2.
+  Build the data ingestion pipeline: upload → R2 → metadata extraction.
+
+TASKS:
+  1. Set up Cloudflare R2:
+       - Create R2 bucket in Cloudflare dashboard
+       - Generate API keys (Access Key ID + Secret)
+       - Note: R2 is S3-compatible
+
+  2. Install: npm install @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
+
+  3. Create apps/backend/src/config/storage.ts:
+       - Initialize S3Client with R2 endpoint:
+           endpoint: https://{accountId}.r2.cloudflarestorage.com
+           credentials: { accessKeyId, secretAccessKey }
+       - Export r2Client and BUCKET_NAME
+
+  4. Create apps/backend/src/services/storage.service.ts:
+       - uploadFile(file, key, metadata): uploads to R2
+       - getPresignedUrl(key, expiresIn): generates signed URL for download
+       - deleteFile(key): removes from R2
+       - listFiles(prefix): lists files in a folder
+
+  5. Create apps/backend/src/controllers/upload.controller.ts:
+       - uploadFile(): POST /api/upload
+           - Multer middleware (memory storage, max 50MB)
+           - Upload to R2 with key: {workspaceId}/{uuid}/{filename}
+           - Save metadata to MongoDB
+           - Return: { fileId, key, url, size, mimeType }
+       - getUploadedFiles(): GET /api/workspaces/:id/files
+       - deleteFile(): DELETE /api/files/:id
+
+  6. Frontend: File attachment for task configs:
+       - Drag-and-drop upload zone
+       - Progress bar during upload
+       - File list with download links
+       - File reference stored in task config
+
+FILES TO CREATE:
+  - apps/backend/src/config/storage.ts
+  - apps/backend/src/services/storage.service.ts
+  - apps/backend/src/controllers/upload.controller.ts
+  - apps/backend/src/routes/upload.routes.ts
+  - apps/frontend/src/components/ui/FileUploader.tsx
+
+OUTCOME:
+  Files can be uploaded to R2. Task configs can reference files.
+  Pre-signed URLs allow secure downloads without exposing R2 keys.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 40 – BULKHEAD PATTERN & QUEUE ISOLATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Implement workspace-level queue isolation so one workspace's
+  heavy workload doesn't impact other workspaces.
+
+TASKS:
+  1. Create apps/backend/src/inngest/functions/workspaceQueue.ts:
+       - Each workspace gets its own Inngest queue (via event naming)
+       - Event naming: 'workflow/execute/{workspaceId}'
+       - Concurrency limits per workspace (free: 2, pro: 10)
+
+  2. Implement BullMQ as fallback queue:
+       Install: npm install bullmq
+       Create apps/backend/src/queues/taskQueue.ts:
+         - One queue per workspace tier
+         - Free tier queue: concurrency 2
+         - Pro tier queue: concurrency 10
+         - Dead letter queue for failed jobs
+
+  3. Queue health monitoring:
+       - GET /api/admin/queues: returns queue depths, rates
+       - Alert if queue depth exceeds 100 jobs
+
+  4. Create apps/backend/src/queues/deadLetterHandler.ts:
+       - Process failed jobs from dead letter queue
+       - Log to AuditLog
+       - Notify workspace owner (via socket)
+       - Provide manual retry option
+
+FILES TO CREATE:
+  - apps/backend/src/inngest/functions/workspaceQueue.ts
+  - apps/backend/src/queues/taskQueue.ts
+  - apps/backend/src/queues/deadLetterHandler.ts
+
+OUTCOME:
+  One workspace cannot starve others. Dead letter jobs are captured.
+  Free and pro tiers have different execution limits.
+
+================================================================================
+                   SECTION 8: PAYMENTS & TEAM MANAGEMENT
+                             PHASES 41 – 44
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 41 – RAZORPAY SUBSCRIPTION INTEGRATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Implement Razorpay subscription billing for Pro plan upgrades.
+  Test mode only — no real money.
+
+TASKS:
+  1. Sign up for Razorpay Test Mode
+  2. Install: npm install razorpay
+
+  3. Create apps/backend/src/config/razorpay.ts:
+       - Initialize Razorpay client with test keys
+
+  4. Create pricing plans in Razorpay dashboard:
+       - Pro Monthly: ₹999/month (or $12/month)
+       - Pro Yearly: ₹9,999/year
+
+  5. Create apps/backend/src/services/payment.service.ts:
+       - createSubscription(workspaceId, planId): creates Razorpay subscription
+       - verifyPayment(paymentId, subscriptionId, signature)
+       - cancelSubscription(subscriptionId)
+       - getSubscription(subscriptionId)
+
+  6. Create apps/backend/src/controllers/payment.controller.ts:
+       - createSubscription(): POST /api/payments/subscribe
+       - verifyPayment(): POST /api/payments/verify
+       - getSubscription(): GET /api/payments/subscription
+       - cancelSubscription(): POST /api/payments/cancel
+       - webhook(): POST /api/payments/webhook (Razorpay events)
+
+  7. Frontend: Pricing/Upgrade page:
+       - Free vs Pro comparison table
+       - "Upgrade to Pro" button → Razorpay checkout
+       - Razorpay.js integration for checkout modal
+       - Post-payment: verify with backend, update workspace plan
+
+  8. Enforce limits by plan:
+       - Free: max 5 workflows, max 3 members, max 50 executions/month
+       - Pro: unlimited workflows, unlimited members, unlimited executions
+
+FILES TO CREATE:
+  - apps/backend/src/config/razorpay.ts
+  - apps/backend/src/services/payment.service.ts
+  - apps/backend/src/controllers/payment.controller.ts
+  - apps/backend/src/routes/payment.routes.ts
+  - apps/frontend/src/app/(dashboard)/settings/billing/page.tsx
+
+OUTCOME:
+  Users can upgrade to Pro via Razorpay checkout. Limits enforced
+  by plan. Webhook updates workspace plan on successful payment.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 42 – TEAM MANAGEMENT & RBAC
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Full team management with role-based access control.
+  Different roles see different features.
+
+TASKS:
+  1. Define roles and permissions matrix:
+       OWNER:  all permissions
+       ADMIN:  all except delete workspace / transfer ownership
+       MEMBER: create/edit own workflows, execute, view all
+       VIEWER: view only, no create/edit/execute
+
+  2. Create apps/backend/src/utils/permissions.ts:
+       - PERMISSIONS object mapping roles to allowed actions
+       - hasPermission(userId, workspaceId, action): boolean
+       - Checks user's role in workspace
+
+  3. Create apps/backend/src/middleware/checkPermission.ts:
+       - Factory: requirePermission('workflow:create')
+       - Returns middleware that checks hasPermission
+       - Returns 403 if unauthorized
+
+  4. Apply permission checks to all routes:
+       - POST workflow: requires 'workflow:create'
+       - DELETE workflow: requires 'workflow:delete'
+       - Execute workflow: requires 'workflow:execute'
+       - Manage members: requires 'workspace:manage_members'
+
+  5. Frontend: Team management page:
+       - apps/frontend/src/app/(dashboard)/settings/team/page.tsx
+       - Member list with role badges
+       - Invite form (email + role select)
+       - Change role dropdown (owner/admin only)
+       - Remove member button
+       - Pending invites section
+
+  6. Frontend: Conditional UI based on role:
+       - Hide/disable buttons user doesn't have permission for
+       - Custom hook: usePermission('workflow:delete')
+
+FILES TO CREATE:
+  - apps/backend/src/utils/permissions.ts
+  - apps/backend/src/middleware/checkPermission.ts
+  - apps/frontend/src/app/(dashboard)/settings/team/page.tsx
+  - apps/frontend/src/hooks/usePermission.ts
+
+OUTCOME:
+  Viewers can't accidentally trigger executions. Owners control
+  who can do what. Roles enforced on both frontend and backend.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 43 – WORKSPACE SETTINGS & AUDIT LOG UI
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Build workspace settings pages and an audit log viewer for
+  compliance and debugging.
+
+TASKS:
+  1. Create apps/frontend/src/app/(dashboard)/settings/layout.tsx:
+       - Settings sidebar: General, Team, Billing, Security, Audit Log
+
+  2. Create settings pages:
+       General: workspace name, description, avatar, slug
+       Security: workspace-level settings, allowed domains
+       Audit Log: searchable table of all workspace actions
+
+  3. Create apps/frontend/src/app/(dashboard)/settings/audit/page.tsx:
+       - Table: user, action, resource, timestamp, IP
+       - Filter by: user, action type, date range
+       - Export as CSV
+       - Pagination (50 per page)
+       - Action descriptions in plain English
+
+  4. Backend: GET /api/workspaces/:id/audit-logs
+       - Paginated, filterable
+       - Export endpoint: GET /api/workspaces/:id/audit-logs/export
+
+  5. Implement comprehensive audit logging throughout:
+       - Every user action creates AuditLog entry
+       - Login, workspace join, workflow create/edit/delete,
+         execution trigger, member invite/remove, plan change
+
+FILES TO CREATE:
+  - apps/frontend/src/app/(dashboard)/settings/layout.tsx
+  - apps/frontend/src/app/(dashboard)/settings/general/page.tsx
+  - apps/frontend/src/app/(dashboard)/settings/audit/page.tsx
+
+OUTCOME:
+  Admins can see exactly who did what and when. Full audit trail
+  for compliance. Exportable for external compliance systems.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 44 – ANALYTICS DASHBOARD
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Build an analytics dashboard showing workflow performance metrics,
+  execution trends, and team activity.
+
+TASKS:
+  1. Backend: analytics aggregation queries with MongoDB pipelines:
+       GET /api/workspaces/:id/analytics:
+         - executions per day (last 30 days)
+         - success rate per workflow
+         - average execution duration per workflow
+         - most active workflows
+         - most active team members
+         - failure rate trend
+
+  2. Cache analytics results in Redis (TTL: 1 hour)
+
+  3. Create apps/frontend/src/app/(dashboard)/analytics/page.tsx:
+       - Date range selector (7d, 30d, 90d, custom)
+       - Stats cards: total executions, success rate, avg duration, active workflows
+       - Line chart: executions over time (success vs failure)
+       - Bar chart: executions per workflow (top 10)
+       - Table: workflow performance ranking
+
+  4. Use recharts library for all charts
+       Install: npm install recharts
+
+  5. Create reusable chart components:
+       - LineChart wrapper with dark theme
+       - BarChart wrapper
+       - StatCard with trend indicator (↑12% vs last period)
+
+FILES TO CREATE:
+  - apps/backend/src/services/analytics.service.ts
+  - apps/backend/src/routes/analytics.routes.ts
+  - apps/frontend/src/app/(dashboard)/analytics/page.tsx
+  - apps/frontend/src/components/analytics/ExecutionChart.tsx
+  - apps/frontend/src/components/analytics/StatCard.tsx
+
+OUTCOME:
+  Teams can measure workflow performance over time. Identify failing
+  workflows. Track team productivity with data.
+
+================================================================================
+                    SECTION 9: TESTING & QUALITY
+                             PHASES 45 – 50
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 45 – BACKEND UNIT TESTS
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Write comprehensive unit tests for all backend utilities, services,
+  and DSA implementations.
+
+TASKS:
+  1. Configure Jest with ts-jest:
+       jest.config.ts with TypeScript support
+
+  2. DSA tests (from earlier phases, now comprehensive):
+       - topologicalSort.test.ts: 10+ test cases
+       - cycleDetection.test.ts: 8+ test cases
+       - priorityQueue.test.ts: 8+ test cases
+       - tokenBucket.test.ts: 6+ test cases
+
+  3. Service unit tests:
+       - dag.service.test.ts: validate DAG service methods
+       - workflow.service.test.ts: mock repository, test business logic
+       - execution.service.test.ts: mock Inngest, test trigger logic
+       - ai.service.test.ts: mock Gemini API, test prompt building
+
+  4. Utility tests:
+       - cache.test.ts: mock Redis, test get/set/del/getOrSet
+       - circuitBreaker.test.ts: test state transitions
+       - cronParser.test.ts: test expression validation and next-run calc
+
+  5. Mock setup:
+       - MongoDB: use mongodb-memory-server for in-memory DB
+       - Redis: use ioredis-mock
+       - Inngest: mock client
+       - Gemini: mock fetch responses
+
+  6. Target: 70%+ code coverage on services and utils
+
+FILES TO CREATE:
+  - apps/backend/jest.config.ts
+  - apps/backend/src/**/__tests__/*.test.ts (all test files)
+  - apps/backend/src/__mocks__/ (mock implementations)
+
+OUTCOME:
+  All critical business logic tested. DSA implementations verified
+  with edge cases. CI will run these on every push.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 46 – BACKEND INTEGRATION TESTS
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Test complete request-response cycles including middleware,
+  controllers, services, and database layers.
+
+TASKS:
+  1. Install: supertest for HTTP testing
+  2. Set up test database (mongodb-memory-server):
+       - Separate test DB per test suite
+       - Clean up after each test
+
+  3. Write integration tests for major flows:
+
+       auth.integration.test.ts:
+         - Protected route without token → 401
+         - Protected route with invalid token → 401
+         - Protected route with valid Clerk token → 200
+
+       workspace.integration.test.ts:
+         - Create workspace → 201 with workspace object
+         - Duplicate slug → 409 conflict
+         - Get workspaces → returns only user's workspaces
+         - Invite member → member appears in workspace.members
+
+       workflow.integration.test.ts:
+         - Create workflow → 201
+         - Save invalid DAG (with cycle) → 400 with cycle path
+         - Save valid DAG → 200, execution order returned
+         - Get workflow by ID → returns full workflow
+
+       execution.integration.test.ts:
+         - Trigger execution on invalid workflow → 400
+         - Trigger execution on valid workflow → 202 with executionId
+         - Get executions → paginated list
+
+  4. Rate limiting tests:
+       - Send 101 requests → 101st returns 429
+       - Wait for refill → requests succeed again
+
+FILES TO CREATE:
+  - apps/backend/src/__tests__/integration/auth.test.ts
+  - apps/backend/src/__tests__/integration/workspace.test.ts
+  - apps/backend/src/__tests__/integration/workflow.test.ts
+  - apps/backend/src/__tests__/integration/execution.test.ts
+
+OUTCOME:
+  Full request lifecycle tested end-to-end. Middleware chains verified.
+  All major user flows covered.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 47 – FRONTEND COMPONENT TESTS
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Test React components with React Testing Library.
+  Focus on user interactions and integration with stores.
+
+TASKS:
+  1. Configure Jest + React Testing Library for Next.js
+  2. Mock providers: ClerkProvider, QueryClientProvider, Zustand stores
+
+  3. Write component tests:
+       WorkflowCard.test.tsx:
+         - Renders workflow name, status, date
+         - Three-dot menu opens on click
+         - Delete option calls onDelete
+         - Status badge has correct color
+
+       NodeConfigPanel.test.tsx:
+         - Opens when node is selected
+         - Renders correct form for each node type
+         - Form changes update Zustand store
+         - Close button dismisses panel
+
+       LiveExecutionCanvas.test.tsx:
+         - Renders nodes in correct positions
+         - Applies correct CSS class for each status
+         - Running nodes show spinner
+
+       CreateWorkflowDialog.test.tsx:
+         - Form renders with name field
+         - Submit with empty name shows validation error
+         - Successful submission closes dialog
+
+  4. Store tests:
+       workflowBuilderStore.test.ts: test all actions
+       collaborationStore.test.ts: test presence updates
+
+FILES TO CREATE:
+  - apps/frontend/src/components/**/__tests__/*.test.tsx
+  - apps/frontend/src/stores/__tests__/*.test.ts
+
+OUTCOME:
+  Key UI components are tested for correct behavior.
+  Store logic is verified independently of components.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 48 – END-TO-END TESTS WITH PLAYWRIGHT
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Write E2E tests that simulate real user flows in the browser.
+  Tests run against the actual running application.
+
+TASKS:
+  1. Install Playwright: npx playwright install
+  2. Configure for Next.js app
+
+  3. E2E test flows:
+
+       auth.e2e.ts:
+         - Visit / → redirected to /sign-in
+         - Sign in with test credentials
+         - Redirected to /dashboard
+
+       workspace.e2e.ts:
+         - Create workspace from dashboard
+         - Workspace appears in switcher
+         - Switch workspace → context changes
+
+       workflow-builder.e2e.ts:
+         - Create new workflow
+         - Drag ManualTask node to canvas
+         - Configure node name
+         - Drag AutomatedTask node
+         - Connect nodes with edge
+         - Click Validate → success message
+         - Save → version increments
+
+       execution.e2e.ts:
+         - Open valid workflow
+         - Click Execute
+         - Execution appears in list
+         - Navigate to execution detail
+         - Logs visible
+
+  4. Use Playwright's codegen to generate test skeletons:
+       npx playwright codegen http://localhost:3000
+
+FILES TO CREATE:
+  - e2e/auth.e2e.ts
+  - e2e/workspace.e2e.ts
+  - e2e/workflow-builder.e2e.ts
+  - e2e/execution.e2e.ts
+  - playwright.config.ts
+
+OUTCOME:
+  Critical user flows tested in real browser. Catches regressions
+  that unit tests miss. Runs in CI.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 49 – PERFORMANCE OPTIMIZATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Optimize backend query performance, frontend bundle size, and
+  overall application responsiveness.
+
+TASKS:
+  BACKEND:
+  1. MongoDB query optimization:
+       - Add compound indexes for all common query patterns
+       - Use explain() to verify indexes are used
+       - Add .lean() to mongoose queries where possible
+       - Limit fields with .select() on large documents
+       - Use aggregation pipeline for analytics (avoid N+1)
+
+  2. Redis optimization:
+       - Review TTL values for all cached data
+       - Use Redis pipelining for batch operations
+       - Monitor cache hit rate (target: >80%)
+
+  3. API response optimization:
+       - Enable gzip compression: npm install compression
+       - Paginate all list endpoints (max 50 per page)
+       - Implement cursor-based pagination for executions/logs
+
+  FRONTEND:
+  4. Next.js optimization:
+       - Verify all images use next/image
+       - Add loading.tsx for all pages (loading skeletons)
+       - Add error.tsx for all pages (error boundaries)
+       - Use dynamic imports for ReactFlow (heavy library)
+       - Implement virtual scrolling for large log lists
+
+  5. Bundle analysis:
+       npx @next/bundle-analyzer
+       Identify and eliminate heavy unused dependencies
+
+  6. React optimization:
+       - Wrap expensive components in React.memo
+       - Use useMemo for expensive computations (DAG layout)
+       - Use useCallback for event handlers passed as props
+       - Avoid re-renders in WorkflowCanvas with proper memoization
+
+FILES TO CREATE/MODIFY:
+  - apps/backend/src/config/database.ts (index definitions)
+  - apps/frontend/src/app/**/loading.tsx (all pages)
+  - apps/frontend/src/app/**/error.tsx (all pages)
+
+OUTCOME:
+  API response times < 100ms for cached routes. Frontend Lighthouse
+  score > 85. No unnecessary re-renders in workflow builder.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 50 – SECURITY HARDENING
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Apply all OWASP security practices. Harden the application
+  against common attack vectors.
+
+TASKS:
+  1. Input sanitization:
+       - Install: xss, mongo-sanitize
+       - Sanitize all user inputs before DB operations
+       - Sanitize DAG node data (prevent XSS in task names)
+       - Strip MongoDB operators from user input
+
+  2. HTTP security headers (Helmet configuration):
+       - Content-Security-Policy
+       - X-Frame-Options: DENY
+       - X-Content-Type-Options: nosniff
+       - Referrer-Policy
+       - Permissions-Policy
+
+  3. CORS hardening:
+       - Explicit allowed origins list (no wildcard in production)
+       - Allowed methods and headers whitelist
+
+  4. Request size limits:
+       - Body parser: 5MB max
+       - File upload: 50MB max
+       - URL length: 2048 chars max
+
+  5. Sensitive data protection:
+       - Never log request bodies containing passwords/tokens
+       - Mask sensitive fields in log output
+       - Ensure R2 files are private (no public access)
+
+  6. API key rotation plan:
+       - Document all external API keys in README (not values, just names)
+       - GitHub Secrets stores all production keys
+       - Environment-specific .env files (.env.development, .env.production)
+
+  7. Security testing:
+       - Run npm audit: fix all critical/high vulnerabilities
+       - Test all auth bypass scenarios
+       - Verify rate limiting works correctly
+
+FILES TO CREATE/MODIFY:
+  - apps/backend/src/middleware/sanitize.ts
+  - apps/backend/src/index.ts (helmet config)
+  - SECURITY.md (security policy document)
+
+OUTCOME:
+  Application passes OWASP Top 10 basic checks. All inputs sanitized.
+  Security headers present. Audit shows no critical vulnerabilities.
+
+================================================================================
+                      SECTION 10: CI/CD & DEPLOYMENT
+                             PHASES 51 – 56
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 51 – GITHUB ACTIONS CI PIPELINE
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Set up GitHub Actions CI to automatically lint, test, and build
+  on every pull request and push to main.
+
+TASKS:
+  1. Create .github/workflows/ci.yml:
+
+       name: CI Pipeline
+       on:
+         push: [main, develop]
+         pull_request: [main]
+
+       jobs:
+         lint:
+           runs-on: ubuntu-latest
+           steps:
+             - checkout
+             - setup Node.js 20
+             - npm ci (root + packages)
+             - Run ESLint on backend and frontend
+             - Run Prettier check
+
+         test-backend:
+           runs-on: ubuntu-latest
+           services:
+             redis: { image: redis:7, ports: [6379:6379] }
+             mongo: { image: mongo:7, ports: [27017:27017] }
+           steps:
+             - checkout
+             - setup Node.js 20
+             - npm ci in apps/backend
+             - Run jest with coverage
+             - Upload coverage to Codecov
+
+         test-frontend:
+           runs-on: ubuntu-latest
+           steps:
+             - checkout
+             - setup Node.js 20
+             - npm ci in apps/frontend
+             - Run jest (component tests)
+
+         build:
+           needs: [lint, test-backend, test-frontend]
+           runs-on: ubuntu-latest
+           steps:
+             - Build backend: tsc
+             - Build frontend: next build
+             - Docker build (no push, just verify it builds)
+
+  2. Set up GitHub Secrets:
+       CI_MONGODB_URI, CI_REDIS_URL, CLERK_TEST_KEY, etc.
+
+  3. Add status badges to README:
+       [![CI](https://github.com/.../badge.svg)](...)
+
+FILES TO CREATE:
+  - .github/workflows/ci.yml
+
+OUTCOME:
+  Every push triggers automated lint + test + build.
+  PRs show CI status before merge. Broken builds caught early.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 52 – GITHUB ACTIONS CD PIPELINE (DEPLOYMENT)
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Automatically deploy to Railway (backend) and Vercel/Railway (frontend)
+  on successful merge to main.
+
+TASKS:
+  1. Create .github/workflows/deploy.yml:
+
+       name: Deploy
+       on:
+         push:
+           branches: [main]
+
+       jobs:
+         deploy-backend:
+           needs: [ci passed]
+           steps:
+             - checkout
+             - Install Railway CLI
+             - railway up --service backend
+             or
+             - Use Railway GitHub integration (auto-deploys on push)
+
+         deploy-frontend:
+           steps:
+             - checkout
+             - npx vercel --prod --token $VERCEL_TOKEN
+             or
+             - Railway: railway up --service frontend
+
+  2. Set up Railway project:
+       - Create Railway project
+       - Add backend service (connect GitHub repo)
+       - Add Redis service (Railway provides managed Redis)
+       - Set environment variables in Railway dashboard
+       - Enable auto-deploy on push to main
+
+  3. Set up Vercel for frontend (alternative):
+       - Connect GitHub repo to Vercel
+       - Auto-deploys on push to main
+       - Set environment variables in Vercel dashboard
+
+  4. Health check after deployment:
+       - Ping /health endpoint after deploy
+       - Fail workflow if health check fails
+       - Rollback to previous deployment (Railway supports this)
+
+  5. Environment promotion:
+       - develop branch → staging environment
+       - main branch → production environment
+
+FILES TO CREATE:
+  - .github/workflows/deploy.yml
+
+OUTCOME:
+  Merging to main automatically deploys backend and frontend.
+  Zero-downtime deployments. Rollback available.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 53 – ENVIRONMENT CONFIGURATION & SECRETS MANAGEMENT
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Properly configure all environments with correct secrets.
+  Never expose production credentials.
+
+TASKS:
+  1. Define all environments:
+       development: local machine
+       test: GitHub Actions CI
+       staging: Railway staging service
+       production: Railway production service
+
+  2. Backend environment files:
+       .env.development (local, git-ignored)
+       .env.test (CI, git-ignored, loaded via GitHub Secrets)
+       .env.production (production, never in git)
+
+  3. Frontend environment files:
+       .env.local (local)
+       .env.production.local (production)
+
+  4. Document all required environment variables in README:
+       Each variable: name, description, how to get it, example value
+
+  5. GitHub Secrets to configure:
+       RAILWAY_TOKEN
+       VERCEL_TOKEN
+       MONGODB_PROD_URI
+       REDIS_PROD_URL
+       CLERK_SECRET_KEY
+       CLOUDFLARE_R2_ACCESS_KEY
+       CLOUDFLARE_R2_SECRET_KEY
+       INNGEST_SIGNING_KEY
+       INNGEST_EVENT_KEY
+       GEMINI_API_KEY
+       RAZORPAY_KEY_ID
+       RAZORPAY_KEY_SECRET
+
+  6. Validate all env vars on startup (Phase 4's env.ts):
+       - Throw descriptive error if any required var is missing
+       - This prevents silent failures in production
+
+FILES TO CREATE:
+  - .env.example (all vars, no values, committed to git)
+  - docs/ENVIRONMENT_SETUP.md
+
+OUTCOME:
+  All environments properly configured. No secrets in git.
+  Clear documentation for onboarding new team members.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 54 – PRODUCTION MONITORING & OBSERVABILITY
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Set up structured logging, error tracking, and performance monitoring
+  for the production environment.
+
+TASKS:
+  1. Structured logging:
+       - All logs output as JSON in production
+       - Log fields: timestamp, level, requestId, userId, method, path,
+         statusCode, duration, error (if any)
+       - Request ID header: X-Request-ID (generate if not present)
+       - Correlation ID flows through all log entries per request
+
+  2. Error tracking with Sentry (free tier):
+       Install: npm install @sentry/node @sentry/nextjs
+       - Initialize in backend index.ts (before routes)
+       - Initialize in frontend layout.tsx
+       - Capture unhandled exceptions automatically
+       - Set user context on all requests (for debugging)
+
+  3. Inngest dashboard:
+       - Review Inngest's built-in monitoring dashboard
+       - Screenshot for portfolio README
+       - Alerts for failed functions (Inngest sends emails)
+
+  4. Custom health endpoint enhancement:
+       GET /health returns:
+         {
+           status: 'ok',
+           timestamp,
+           uptime,
+           version,
+           services: {
+             mongodb: 'connected' | 'disconnected',
+             redis: 'connected' | 'disconnected',
+             inngest: 'healthy'
+           }
+         }
+
+  5. Railway metrics:
+       - Review Railway's built-in CPU/memory metrics
+       - Screenshot for portfolio README
+
+FILES TO CREATE/MODIFY:
+  - apps/backend/src/middleware/requestId.ts
+  - apps/backend/src/utils/logger.ts (enhanced)
+  - apps/backend/src/config/sentry.ts
+  - apps/frontend/src/app/sentry.client.config.ts
+
+OUTCOME:
+  All production errors captured in Sentry. Structured logs
+  searchable. Health endpoint shows real service status.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 55 – LOAD TESTING & PERFORMANCE VALIDATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Validate that the system handles 100+ concurrent users.
+  Generate load test results for the portfolio README.
+
+TASKS:
+  1. Install k6: brew install k6 (or download)
+
+  2. Create k6 test scripts:
+
+       k6/smoke.js: basic test - 5 users, 1 minute
+         - Authenticate
+         - Fetch workspace list
+         - Fetch workflow list
+         - Expected: <200ms response times
+
+       k6/load.js: 100 concurrent users, 5 minutes
+         - Mix of read and write operations
+         - 70% reads, 30% writes
+         - Expected: <500ms p95 response time
+
+       k6/stress.js: ramp from 0 to 200 users
+         - Find the breaking point
+         - Expected: graceful degradation, no crashes
+
+  3. Run tests against staging environment
+
+  4. Capture results:
+       k6 run --out json=results.json k6/load.js
+
+  5. Generate charts from results:
+       - Response time percentiles (p50, p90, p95, p99)
+       - Requests per second
+       - Error rate
+
+  6. Document findings in README:
+       - "Handles 100 concurrent users with p95 < 300ms"
+       - Include chart screenshots
+
+FILES TO CREATE:
+  - k6/smoke.js
+  - k6/load.js
+  - k6/stress.js
+  - docs/LOAD_TEST_RESULTS.md
+
+OUTCOME:
+  Quantified performance metrics. Portfolio shows real numbers.
+  Bottlenecks identified and documented.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 56 – DOCKER PRODUCTION BUILD & DEPLOYMENT VERIFICATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Verify production Docker builds work correctly.
+  Complete final deployment and verify all features work in production.
+
+TASKS:
+  1. Backend production Dockerfile optimization:
+       - Multi-stage build (builder + runner)
+       - Only copy dist/ and node_modules (production only)
+       - Run as non-root user
+       - Health check instruction in Dockerfile
+
+  2. Frontend production Dockerfile:
+       - Multi-stage: dependencies → builder → runner
+       - Use Next.js standalone output mode
+       - Minimal final image
+
+  3. docker-compose.prod.yml:
+       - Backend + Redis (or use Upstash in prod)
+       - Environment variables from .env files
+       - Health checks and restart policies
+
+  4. Production verification checklist:
+       [ ] Sign up flow works
+       [ ] Create workspace
+       [ ] Create workflow + build DAG
+       [ ] Validate DAG
+       [ ] Execute workflow + watch live
+       [ ] Collaboration: open in 2 browsers, see cursors
+       [ ] AI generation works
+       [ ] File upload works
+       [ ] Upgrade to pro (test mode payment)
+       [ ] Analytics shows data
+       [ ] All URLs work (no 404s)
+       [ ] Inngest dashboard shows function history
+
+  5. Set production environment variables in Railway
+  6. Final deploy to production
+  7. Share live URL
+
+FILES TO CREATE/MODIFY:
+  - apps/backend/Dockerfile (production optimized)
+  - apps/frontend/Dockerfile (production optimized)
+  - docker-compose.prod.yml
+  - docs/DEPLOYMENT.md
+
+OUTCOME:
+  Application live in production. All features working.
+  Performance verified. Ready for portfolio showcase.
+
+================================================================================
+                   SECTION 11: PORTFOLIO & DOCUMENTATION
+                             PHASES 57 – 60
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 57 – COMPREHENSIVE README DOCUMENTATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Write a world-class README that showcases the engineering depth
+  of FlowForge for potential employers and collaborators.
+
+TASKS:
+  1. README.md structure:
+
+       HEADER:
+         - Logo + project name
+         - One-line description
+         - Live demo link
+         - CI badge, coverage badge, license badge
+
+       OVERVIEW:
+         - What it does (with GIF/screenshot)
+         - Why it's impressive (engineering depth)
+         - Feature list
+
+       ARCHITECTURE:
+         - System architecture diagram (C4 Level 1: Context)
+         - Component diagram (C4 Level 2: Container)
+         - Data flow diagram
+
+       TECH STACK:
+         - Table with each technology and why chosen
+
+       HLD PATTERNS (with code snippets):
+         - Event-Driven Architecture explanation
+         - CQRS light implementation
+         - Circuit Breaker with state diagram
+         - Distributed Locking with Redis Redlock
+         - All 14 patterns with brief explanations
+
+       LLD PATTERNS (with code snippets):
+         - Repository Pattern example
+         - Factory Pattern example
+         - Strategy Pattern example
+         - State Machine diagram
+
+       DSA IMPLEMENTATIONS:
+         - Topological Sort with complexity analysis + code
+         - Cycle Detection with example
+         - Priority Queue with heap diagram
+         - Token Bucket with diagram
+
+       API DOCUMENTATION:
+         - Key endpoints with request/response examples
+
+       SETUP INSTRUCTIONS:
+         - Prerequisites
+         - Environment variables
+         - Installation steps
+         - Running locally
+
+       PERFORMANCE:
+         - Load test results with charts
+         - Response time benchmarks
+
+       SCREENSHOTS:
+         - Dashboard, Workflow Builder, Execution Monitor,
+           Collaboration, Analytics, Inngest Dashboard
+
+FILES TO CREATE:
+  - README.md (comprehensive)
+  - docs/ (supporting diagrams and docs)
+
+OUTCOME:
+  README impresses any senior engineer who reads it.
+  All technical decisions explained with trade-offs.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 58 – API DOCUMENTATION WITH SWAGGER
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Generate interactive API documentation that lets anyone explore
+  and test the FlowForge API.
+
+TASKS:
+  1. Install: npm install swagger-ui-express swagger-jsdoc
+
+  2. Create apps/backend/src/docs/swagger.ts:
+       - OpenAPI 3.0 specification
+       - Info: title, version, description, contact
+       - Servers: development, production
+       - Security: Bearer token (Clerk JWT)
+       - Tags: users, workspaces, workflows, executions, ai, payments
+
+  3. Add JSDoc annotations to all controllers:
+       /**
+        * @swagger
+        * /api/workflows/{id}/execute:
+        *   post:
+        *     summary: Trigger workflow execution
+        *     tags: [executions]
+        *     security: [{ BearerAuth: [] }]
+        *     parameters: [...]
+        *     responses:
+        *       202: { description: Execution started }
+        */
+
+  4. Register swagger UI:
+       app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
+
+  5. Document all request/response schemas using $ref components
+
+  6. Export Postman collection from Swagger spec
+
+  7. Add API docs link to README:
+       "API Documentation: https://api.flowforge.com/api/docs"
+
+FILES TO CREATE:
+  - apps/backend/src/docs/swagger.ts
+  - apps/backend/src/docs/schemas/ (reusable schemas)
+
+OUTCOME:
+  Interactive API explorer at /api/docs. Every endpoint documented
+  with examples. Postman collection ready to share.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 59 – ARCHITECTURE DIAGRAMS & TECHNICAL WRITEUP
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Create professional C4 architecture diagrams and write technical
+  blog-post-style documentation for portfolio.
+
+TASKS:
+  1. Create C4 diagrams using Excalidraw or draw.io:
+
+       C4 Level 1 – System Context:
+         - FlowForge system
+         - External systems: Clerk, MongoDB Atlas, Redis, Inngest,
+           Cloudflare R2, Razorpay, Gemini AI
+         - User types: Team Member, Admin, API Client
+
+       C4 Level 2 – Container Diagram:
+         - Next.js Frontend (browser)
+         - Express Backend (container)
+         - MongoDB (database)
+         - Redis (cache + pub/sub)
+         - Inngest Worker (background)
+         - Socket.io Server
+
+       C4 Level 3 – Component Diagram (Backend):
+         - Show: Routes → Controllers → Services → Repositories → Models
+         - Show: Socket handlers, Inngest functions
+         - Show: Middleware chain
+
+       Data Flow Diagrams:
+         - Workflow execution flow
+         - Real-time collaboration flow
+         - Authentication flow
+
+  2. Export all diagrams as SVG/PNG
+
+  3. Write technical articles (for LinkedIn/Medium/blog):
+       Article 1: "Building Real-Time Collaboration with Socket.io and Redis"
+       Article 2: "Implementing Topological Sort for DAG Execution"
+       Article 3: "Circuit Breaker Pattern in Node.js"
+
+  4. Record demo video (optional but powerful):
+       - 5-minute Loom walkthrough of all features
+       - Show collaboration in two browser windows
+       - Show real-time execution monitoring
+       - Show AI DAG generation
+
+FILES TO CREATE:
+  - docs/diagrams/ (all C4 diagram files)
+  - docs/ARCHITECTURE.md
+  - docs/TECHNICAL_DECISIONS.md (trade-offs document)
+
+OUTCOME:
+  Professional diagrams for README and interviews. Artifacts to discuss
+  in system design interviews. Blog content for personal brand.
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 60 – FINAL POLISH, LAUNCH & PORTFOLIO PRESENTATION
+────────────────────────────────────────────────────────────────────────────────
+GOAL:
+  Final polish pass on everything. Launch publicly. Present the project
+  as a portfolio centerpiece.
+
+TASKS:
+  1. Final UI polish:
+       - Review all pages for consistent spacing and typography
+       - Ensure dark mode looks great on all pages
+       - Check responsive design on mobile (375px) and tablet (768px)
+       - Fix any remaining UI glitches
+       - Ensure all loading states are implemented
+       - Ensure all empty states are implemented
+       - Ensure all error states are implemented
+
+  2. Onboarding experience:
+       - Create demo workspace with sample workflows on first signup
+       - Guided tooltip for first-time workflow builder users
+       - "What's New" modal with feature highlights
+
+  3. SEO and metadata:
+       - next/metadata for all pages
+       - Open Graph tags (title, description, image)
+       - Twitter card meta tags
+       - robots.txt, sitemap.xml
+
+  4. Final security audit:
+       - Run npm audit --audit-level=high
+       - Fix all high/critical vulnerabilities
+       - Verify all env vars are set in production
+       - Test auth flow end-to-end in production
+
+  5. Final performance check:
+       - Run Lighthouse on production URL
+       - Target: Performance > 85, Accessibility > 90
+       - Fix any Lighthouse issues
+
+  6. Portfolio presentation prep:
+       Create talking points for interviews:
+         - "Why did you choose Inngest over a custom queue?" (trade-off)
+         - "How does your distributed lock prevent duplicate execution?"
+         - "Explain your topological sort implementation"
+         - "How does your circuit breaker work?"
+         - "Walk me through a workflow execution end-to-end"
+         - "How does the real-time collaboration handle conflicts?"
+
+  7. GitHub repo final touches:
+       - Clean up commit history (squash WIP commits)
+       - Add CONTRIBUTING.md
+       - Add LICENSE (MIT)
+       - Pin to GitHub profile
+       - Add live demo link to repo description
+
+  8. Share the project:
+       - LinkedIn post with demo GIF
+       - Add to resume under "Featured Projects"
+       - Submit to showoff communities (Dev.to, etc.)
+
+FILES TO CREATE:
+  - CONTRIBUTING.md
+  - LICENSE
+  - docs/INTERVIEW_PREP.md (talking points)
+  - public/og-image.png (Open Graph image)
+
+OUTCOME:
+  FlowForge is live, polished, and portfolio-ready.
+  You have answers for every system design question this project raises.
+  Ready to impress in any senior full-stack or backend interview.
+
+================================================================================
+                         COMPLETE SUMMARY
+================================================================================
+
+SECTION 1: Project Foundation      (Phases 1–8)    - Monorepo, Auth, Docker
+SECTION 2: Data Layer              (Phases 9–13)   - Models, Repository, Redis
+SECTION 3: DSA Implementations     (Phases 14–17)  - Sort, Heap, Rate Limiting
+SECTION 4: Workflow Builder        (Phases 18–24)  - React Flow, Templates
+SECTION 5: Real-Time Collaboration (Phases 25–29)  - Socket.io, Cursors, Feed
+SECTION 6: Execution Engine        (Phases 30–36)  - Inngest, Circuit Breaker
+SECTION 7: AI & File Handling      (Phases 37–40)  - Gemini, R2, Bulkhead
+SECTION 8: Payments & Teams        (Phases 41–44)  - Razorpay, RBAC, Analytics
+SECTION 9: Testing & Quality       (Phases 45–50)  - Unit, Integration, E2E
+SECTION 10: CI/CD & Deployment     (Phases 51–56)  - GitHub Actions, Railway
+SECTION 11: Portfolio & Docs       (Phases 57–60)  - README, Swagger, Launch
+
+TOTAL: 60 Phases | Zero to Production-Ready | Full-Stack + System Design Showcase
+
+================================================================================
+               FLOWFORGE – Built to stand out in the 2026 job market.
+================================================================================
