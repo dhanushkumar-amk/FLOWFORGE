@@ -2,7 +2,10 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
+import type { Server } from "node:http";
+import { connectDB, disconnectDB } from "./config/database";
 import { env } from "./config/env";
+import { connectRedis, disconnectRedis } from "./config/redis";
 import { errorHandler } from "./middleware/errorHandler";
 import { notFound } from "./middleware/notFound";
 import { logger } from "./utils/logger";
@@ -30,13 +33,75 @@ app.get("/health", (_req, res) => {
 app.use(notFound);
 app.use(errorHandler);
 
-if (require.main === module) {
-  app.listen(env.PORT, () => {
+const startServer = async (): Promise<Server> => {
+  await connectDB();
+  await connectRedis();
+
+  const server = app.listen(env.PORT, () => {
     logger.info("Backend server started", {
       port: env.PORT,
       environment: env.NODE_ENV,
     });
   });
+
+  return server;
+};
+
+const shutdown = async (server?: Server): Promise<void> => {
+  logger.info("Graceful shutdown started");
+
+  if (server) {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      });
+    });
+  }
+
+  await Promise.all([disconnectDB(), disconnectRedis()]);
+  logger.info("Graceful shutdown completed");
+};
+
+if (require.main === module) {
+  let server: Server | undefined;
+
+  startServer()
+    .then((startedServer) => {
+      server = startedServer;
+    })
+    .catch((error) => {
+      logger.error("Failed to start backend server", {
+        message: error instanceof Error ? error.message : String(error),
+      });
+      process.exit(1);
+    });
+
+  process.on("SIGTERM", () => {
+    shutdown(server)
+      .then(() => process.exit(0))
+      .catch((error) => {
+        logger.error("Graceful shutdown failed", {
+          message: error instanceof Error ? error.message : String(error),
+        });
+        process.exit(1);
+      });
+  });
+
+  process.on("SIGINT", () => {
+    shutdown(server)
+      .then(() => process.exit(0))
+      .catch((error) => {
+        logger.error("Graceful shutdown failed", {
+          message: error instanceof Error ? error.message : String(error),
+        });
+        process.exit(1);
+      });
+  });
 }
 
-export { app };
+export { app, startServer, shutdown };
