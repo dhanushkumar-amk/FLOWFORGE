@@ -1,9 +1,0 @@
-node_modules
-.turbo
-dist
-build
-.next
-coverage
-.env
-.env.local
-*.tsbuildinfo
