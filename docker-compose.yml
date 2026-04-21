@@ -35,7 +35,7 @@ services:
       NODE_ENV: development
       HOST: 0.0.0.0
       PORT: 4000
-      MONGO_URL: mongodb://mongo:27017/flowforge
+      MONGODB_URI: mongodb://mongo:27017/flowforge
       REDIS_URL: redis://redis:6379
     ports:
       - "4000:4000"

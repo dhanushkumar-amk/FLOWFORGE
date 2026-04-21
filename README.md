@@ -47,6 +47,12 @@ The repository should protect `main` with required pull requests, required statu
 - The `api` service mounts the repo into `/workspace` and keeps container `node_modules` in a named volume so `tsx watch` can hot-reload without host dependency conflicts.
 - Start the stack with `docker compose up --build`.
 
+## MongoDB Setup
+
+- The API reads MongoDB connection details from `MONGODB_URI`.
+- For local Docker development, Compose points the API to the local Mongo container.
+- For Atlas, keep the real connection string in a local `.env` file or your shell environment and run `pnpm --filter @flowforge/api seed` to load sample data.
+
 ## Getting Started
 
 1. Install dependencies with `pnpm install`.
