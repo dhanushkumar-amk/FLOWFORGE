@@ -1,103 +1,88 @@
-import Image from "next/image";
+import { ArrowRight, GitBranch, RadioTower, ShieldCheck, type LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const features: Array<{
+  title: string;
+  description: string;
+  icon: LucideIcon;
+}> = [
+  {
+    title: "Clerk ready",
+    description: "Authentication provider is wired into the root layout.",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Realtime ready",
+    description: "Socket.IO client dependency is available.",
+    icon: RadioTower,
+  },
+  {
+    title: "DAG ready",
+    description: "React Flow is installed for the builder phase.",
+    icon: GitBranch,
+  },
+];
 
 export default function Home() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-8 sm:px-10 lg:px-12">
+      <nav className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="grid size-10 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+            <GitBranch className="size-5" />
+          </div>
+          <span className="text-xl font-semibold tracking-tight">FlowForge</span>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        <Button variant="outline" className="rounded-full">
+          Sign in
+        </Button>
+      </nav>
+
+      <section className="grid flex-1 items-center gap-10 py-20 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="space-y-8">
+          <div className="inline-flex rounded-full border bg-card/70 px-4 py-2 text-sm text-muted-foreground shadow-sm backdrop-blur">
+            Workflow orchestration for teams that move fast
+          </div>
+          <div className="space-y-5">
+            <h1 className="max-w-3xl text-5xl font-semibold tracking-[-0.05em] text-balance sm:text-7xl">
+              Build DAGs that feel alive.
+            </h1>
+            <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
+              FlowForge brings workflow design, realtime execution logs, and team governance into
+              one focused workspace.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button size="lg" className="rounded-full">
+              Start building
+              <ArrowRight className="size-4" />
+            </Button>
+            <Button size="lg" variant="secondary" className="rounded-full">
+              View architecture
+            </Button>
+          </div>
+        </div>
+
+        <Card className="overflow-hidden border-foreground/10 bg-card/80 shadow-2xl shadow-primary/10 backdrop-blur">
+          <CardHeader>
+            <CardTitle>Phase 6 frontend base</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {features.map(({ title, description, icon: Icon }) => (
+              <div key={title} className="rounded-2xl border bg-background/60 p-4">
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <Icon className="size-4" />
+                  </div>
+                  <h2 className="font-semibold">{title}</h2>
+                </div>
+                <p className="text-sm leading-6 text-muted-foreground">{description}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </section>
+    </main>
   );
 }
