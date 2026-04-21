@@ -1,32 +1,40 @@
 import { Router } from "express";
 import { isValidObjectId } from "mongoose";
 
-import { WorkspaceModel, type WorkspaceRole, WorkflowModel } from "../models";
+import type { Workflow, Workspace, WorkspaceRole } from "../models";
 import { requireWorkspaceAccess, requireWorkspaceRole } from "../middleware/requireWorkspace";
+import { workflowRepository, workspaceRepository } from "../repositories";
 import { slugifyWorkspaceName } from "../utils/slugify";
-import { withWorkspaceScope } from "../utils/workspaceScope";
 
 const workspaceRouter = Router();
+type WorkspaceRecord = Workspace & { _id: { toString(): string } };
+type WorkflowRecord = Workflow & { _id: { toString(): string } };
 
 workspaceRouter.get("/", async (req, res) => {
   const userId = req.currentUserId;
 
-  const workspaces = await WorkspaceModel.find({
-    "members.userId": userId
-  })
-    .sort({ updatedAt: -1 })
-    .lean();
+  if (!userId) {
+    res.status(401).json({
+      error: "Unauthorized"
+    });
+    return;
+  }
+
+  const workspaces = (await workspaceRepository.findByUserId(userId)) as WorkspaceRecord[];
+  const sortedWorkspaces = [...workspaces].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
 
   res.json({
-    data: workspaces.map((workspace) => {
-      const membership = workspace.members.find((member) => member.userId === userId);
+    data: sortedWorkspaces.map((workspace) => {
+      const role = workspaceRepository.getMembershipRole(workspace, userId);
 
       return {
-        id: workspace._id.toString(),
+        id: String(workspace._id),
         name: workspace.name,
         slug: workspace.slug,
         plan: workspace.plan,
-        role: membership?.role ?? null,
+        role,
         ownerId: workspace.ownerId,
         memberCount: workspace.members.length,
         settings: workspace.settings,
@@ -41,6 +49,13 @@ workspaceRouter.post("/", async (req, res) => {
   const userId = req.currentUserId;
   const rawName = typeof req.body?.name === "string" ? req.body.name.trim() : "";
 
+  if (!userId) {
+    res.status(401).json({
+      error: "Unauthorized"
+    });
+    return;
+  }
+
   if (!rawName || rawName.length < 3) {
     res.status(422).json({
       error: "Workspace name must be at least 3 characters long"
@@ -52,12 +67,12 @@ workspaceRouter.post("/", async (req, res) => {
   let slug = baseSlug || `workspace-${Date.now()}`;
   let suffix = 1;
 
-  while (await WorkspaceModel.exists({ slug })) {
+  while (await workspaceRepository.slugExists(slug)) {
     suffix += 1;
     slug = `${baseSlug}-${suffix}`;
   }
 
-  const workspace = await WorkspaceModel.create({
+  const workspace = (await workspaceRepository.create({
     name: rawName,
     slug,
     ownerId: userId,
@@ -68,11 +83,11 @@ workspaceRouter.post("/", async (req, res) => {
         joinedAt: new Date()
       }
     ]
-  });
+  } as unknown as Partial<Workspace>)) as WorkspaceRecord;
 
   res.status(201).json({
     data: {
-      id: workspace._id.toString(),
+      id: String(workspace._id),
       name: workspace.name,
       slug: workspace.slug,
       ownerId: workspace.ownerId,
@@ -87,8 +102,14 @@ workspaceRouter.post("/", async (req, res) => {
 
 workspaceRouter.get("/:workspaceId", requireWorkspaceAccess, async (req, res) => {
   const userId = req.currentUserId;
+  if (!userId) {
+    res.status(401).json({
+      error: "Unauthorized"
+    });
+    return;
+  }
 
-  const workspace = await WorkspaceModel.findById(req.workspace?.id).lean();
+  const workspace = (await workspaceRepository.findById(req.workspace!.id)) as WorkspaceRecord | null;
 
   if (!workspace) {
     res.status(404).json({
@@ -97,26 +118,26 @@ workspaceRouter.get("/:workspaceId", requireWorkspaceAccess, async (req, res) =>
     return;
   }
 
-  const workflows = await WorkflowModel.find(withWorkspaceScope(req.workspace!.id))
-    .select("_id name status updatedAt")
-    .sort({ updatedAt: -1 })
-    .lean();
+  const workflows = (await workflowRepository.findByWorkspaceId(req.workspace!.id)) as WorkflowRecord[];
+  const recentWorkflows = [...workflows]
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 20);
 
-  const membership = workspace.members.find((member) => member.userId === userId);
+  const role = workspaceRepository.getMembershipRole(workspace, userId);
 
   res.json({
     data: {
-      id: workspace._id.toString(),
+      id: String(workspace._id),
       name: workspace.name,
       slug: workspace.slug,
       ownerId: workspace.ownerId,
-      role: membership?.role ?? null,
+      role,
       plan: workspace.plan,
       settings: workspace.settings,
       members: workspace.members,
       workflowCount: workflows.length,
-      recentWorkflows: workflows.map((workflow) => ({
-        id: workflow._id.toString(),
+      recentWorkflows: recentWorkflows.map((workflow) => ({
+        id: String(workflow._id),
         name: workflow.name,
         status: workflow.status,
         updatedAt: workflow.updatedAt
@@ -128,7 +149,7 @@ workspaceRouter.get("/:workspaceId", requireWorkspaceAccess, async (req, res) =>
 });
 
 workspaceRouter.post("/:workspaceId/switch", requireWorkspaceAccess, async (req, res) => {
-  const workspace = await WorkspaceModel.findById(req.workspace?.id).lean();
+  const workspace = (await workspaceRepository.findById(req.workspace!.id)) as WorkspaceRecord | null;
 
   if (!workspace) {
     res.status(404).json({
@@ -139,10 +160,10 @@ workspaceRouter.post("/:workspaceId/switch", requireWorkspaceAccess, async (req,
 
   res.json({
     data: {
-      activeWorkspaceId: workspace._id.toString(),
+      activeWorkspaceId: String(workspace._id),
       role: req.workspace?.role,
       workspace: {
-        id: workspace._id.toString(),
+        id: String(workspace._id),
         name: workspace.name,
         slug: workspace.slug
       }
@@ -164,10 +185,10 @@ workspaceRouter.delete(
       return;
     }
 
-    await Promise.all([
-      WorkflowModel.deleteMany(withWorkspaceScope(workspaceId)),
-      WorkspaceModel.findByIdAndDelete(workspaceId)
-    ]);
+    const workflows = (await workflowRepository.findByWorkspaceId(workspaceId)) as WorkflowRecord[];
+
+    await Promise.all(workflows.map((workflow) => workflowRepository.delete(String(workflow._id))));
+    await workspaceRepository.delete(workspaceId);
 
     res.status(204).send();
   }

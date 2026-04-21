@@ -74,7 +74,6 @@ const workspaceSchema = new Schema(
   }
 );
 
-workspaceSchema.index({ slug: 1 }, { unique: true });
 workspaceSchema.index({ ownerId: 1 });
 workspaceSchema.index({ "members.userId": 1 });
 

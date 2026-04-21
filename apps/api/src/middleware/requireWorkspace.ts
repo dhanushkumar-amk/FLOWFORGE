@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 
-import { WorkspaceModel } from "../models";
+import { workspaceRepository } from "../repositories";
 
 const ALLOWED_ROLES = new Set(["owner", "admin", "member"] as const);
 
@@ -30,10 +30,7 @@ export async function requireWorkspaceAccess(
     return;
   }
 
-  const workspace = await WorkspaceModel.findOne({
-    _id: workspaceId,
-    "members.userId": userId
-  }).lean();
+  const workspace = await workspaceRepository.findAccessibleWorkspace(workspaceId, userId);
 
   if (!workspace) {
     res.status(403).json({
@@ -42,9 +39,9 @@ export async function requireWorkspaceAccess(
     return;
   }
 
-  const membership = workspace.members.find((member) => member.userId === userId);
+  const role = workspaceRepository.getMembershipRole(workspace, userId);
 
-  if (!membership || !ALLOWED_ROLES.has(membership.role)) {
+  if (!role || !ALLOWED_ROLES.has(role)) {
     res.status(403).json({
       error: "Forbidden"
     });
@@ -53,7 +50,7 @@ export async function requireWorkspaceAccess(
 
   req.workspace = {
     id: workspaceId,
-    role: membership.role
+    role
   };
 
   next();
