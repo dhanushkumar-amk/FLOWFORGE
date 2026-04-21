@@ -10,7 +10,11 @@ export async function requireWorkspaceAccess(
   next: NextFunction
 ): Promise<void> {
   const userId = req.currentUserId;
-  const workspaceId = req.params.workspaceId ?? req.header("x-workspace-id");
+  const routeWorkspaceId = req.params.workspaceId;
+  const workspaceHeader = req.header("x-workspace-id");
+  const workspaceId =
+    (Array.isArray(routeWorkspaceId) ? routeWorkspaceId[0] : routeWorkspaceId) ??
+    (Array.isArray(workspaceHeader) ? workspaceHeader[0] : workspaceHeader);
 
   if (!userId) {
     res.status(401).json({
