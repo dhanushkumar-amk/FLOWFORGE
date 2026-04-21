@@ -2,7 +2,7 @@ import type { InferSchemaType, HydratedDocument, Types } from "mongoose";
 
 export const USER_PLANS = ["free", "pro"] as const;
 export const WORKSPACE_PLANS = ["free", "pro"] as const;
-export const WORKSPACE_ROLES = ["owner", "admin", "member", "viewer"] as const;
+export const WORKSPACE_ROLES = ["owner", "admin", "member"] as const;
 export const WORKFLOW_STATUSES = ["draft", "active", "archived"] as const;
 export const TASK_TYPES = ["manual", "automated", "api", "condition", "delay", "ai"] as const;
 export const TASK_STATUSES = ["pending", "running", "completed", "failed", "skipped"] as const;

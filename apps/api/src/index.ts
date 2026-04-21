@@ -7,6 +7,7 @@ import { createAppBanner } from "@flowforge/shared";
 import { connectDatabase } from "./lib/db";
 import { attachCurrentUser } from "./middleware/auth";
 import { authRouter } from "./routes/auth.routes";
+import { workspaceRouter } from "./routes/workspace.routes";
 
 const app = express();
 const port = Number(process.env.PORT ?? 4000);
@@ -28,6 +29,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/api", requireAuth(), attachCurrentUser);
 app.use("/api/auth", authRouter);
+app.use("/api/workspaces", workspaceRouter);
 
 async function startServer(): Promise<void> {
   await connectDatabase();

@@ -15,6 +15,7 @@ export function attachCurrentUser(
     return;
   }
 
+  req.currentUserId = auth.userId;
   next();
 }
 
