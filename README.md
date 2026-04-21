@@ -53,6 +53,19 @@ The repository should protect `main` with required pull requests, required statu
 - For local Docker development, Compose points the API to the local Mongo container.
 - For Atlas, keep the real connection string in a local `.env` file or your shell environment and run `pnpm --filter @flowforge/api seed` to load sample data.
 
+## Clerk Backend Auth
+
+- The API loads Clerk with `clerkMiddleware()` and protects `/api/*` routes with `requireAuth()`.
+- `/api/auth/me` returns the authenticated Clerk session details, including the extracted `userId`.
+- Set `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`, and `CLERK_SIGN_IN_URL` in `apps/api/.env` before using protected routes.
+
+## Clerk Frontend Auth
+
+- `apps/web` now uses Next.js App Router with `ClerkProvider` at the root layout.
+- Dedicated Clerk-hosted routes are mounted at `/sign-in` and `/sign-up`.
+- The dashboard is protected in App Router server components via `auth()`.
+- The dashboard navbar includes `UserButton` and `OrganizationSwitcher`.
+
 ## Getting Started
 
 1. Install dependencies with `pnpm install`.

@@ -3,13 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsx watch src/main.ts",
-    "lint": "eslint src --ext .ts",
-    "test": "tsx --test src/**/*.test.ts",
-    "typecheck": "tsc -p tsconfig.json"
+    "build": "next build",
+    "dev": "next dev",
+    "lint": "eslint . --ext .ts,.tsx",
+    "test": "tsx --test tests/**/*.test.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.19.2",
     "@flowforge/shared": "workspace:*"
+    ,
+    "next": "^16.0.10",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2"
   }
 }

@@ -12,8 +12,10 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@clerk/express": "^1.7.10",
     "express": "^5.1.0",
     "mongoose": "^8.19.1",
+    "dotenv": "^16.6.1",
     "@flowforge/shared": "workspace:*"
   },
   "devDependencies": {
