@@ -40,6 +40,13 @@ FlowForge is organized as a `pnpm` monorepo so the web app, API, and shared pack
 
 The repository should protect `main` with required pull requests, required status checks, and conversation resolution. The ruleset payload in `.github/branch-protection-main.json` is ready to apply with GitHub admin access.
 
+## Docker Dev Setup
+
+- `apps/api/Dockerfile` provides multi-stage `dev`, `build`, and `production` targets for the Express API.
+- `docker-compose.yml` starts `mongo`, `redis`, and `api` together for local development.
+- The `api` service mounts the repo into `/workspace` and keeps container `node_modules` in a named volume so `tsx watch` can hot-reload without host dependency conflicts.
+- Start the stack with `docker compose up --build`.
+
 ## Getting Started
 
 1. Install dependencies with `pnpm install`.
