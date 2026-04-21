@@ -5,6 +5,7 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
+    "docker:dev": "docker-compose up redis -d",
     "lint": "turbo lint"
   },
   "workspaces": [
