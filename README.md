@@ -1,5 +1,9 @@
 # FlowForge
 
+[![CI](https://github.com/dhanushkumar-amk/FLOWFORGE/actions/workflows/ci.yml/badge.svg)](https://github.com/dhanushkumar-amk/FLOWFORGE/actions/workflows/ci.yml)
+![Node 20](https://img.shields.io/badge/node-20.x-339933?logo=node.js&logoColor=white)
+![pnpm workspace](https://img.shields.io/badge/pnpm-workspace-F69220?logo=pnpm&logoColor=white)
+
 FlowForge is organized as a `pnpm` monorepo so the web app, API, and shared packages can evolve together from a single workspace.
 
 ## Workspace Layout
@@ -25,6 +29,16 @@ FlowForge is organized as a `pnpm` monorepo so the web app, API, and shared pack
 - root ESLint and Prettier configuration shared across the repo
 - starter `.env.example` files for the web and API apps
 - Turbo scripts for `dev`, `build`, `lint`, and `typecheck`
+
+## CI Pipeline
+
+- GitHub Actions runs `lint`, `typecheck`, `test`, and `build` on pushes to `main` and on pull requests.
+- `actions/cache` caches the pnpm store to speed up dependency restores between runs.
+- The recommended branch protection rules for `main` live in `.github/branch-protection-main.json`.
+
+### Branch Protection
+
+The repository should protect `main` with required pull requests, required status checks, and conversation resolution. The ruleset payload in `.github/branch-protection-main.json` is ready to apply with GitHub admin access.
 
 ## Getting Started
 
