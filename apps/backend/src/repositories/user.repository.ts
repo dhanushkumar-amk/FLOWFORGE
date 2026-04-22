@@ -15,6 +15,24 @@ export class UserRepository extends BaseRepository<IUser> {
     return this.findOne({ email: email.toLowerCase() });
   }
 
+  async deleteByClerkId(clerkId: string): Promise<boolean> {
+    const result = await UserModel.findOneAndDelete({ clerkId }).exec();
+    return result !== null;
+  }
+
+  async updateByClerkId(clerkId: string, data: UpdateQuery<IUser>): Promise<IUser | null> {
+    return UserModel.findOneAndUpdate(
+      { clerkId },
+      data,
+      {
+        new: true,
+        runValidators: true,
+      },
+    )
+      .lean<IUser>()
+      .exec();
+  }
+
   async upsertByClerkId(clerkId: string, data: UpdateQuery<IUser>): Promise<IUser> {
     return UserModel.findOneAndUpdate(
       { clerkId },

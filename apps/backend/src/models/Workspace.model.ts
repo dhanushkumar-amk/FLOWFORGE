@@ -24,6 +24,8 @@ export interface IWorkspace {
   members: IWorkspaceMember[];
   plan: UserPlan;
   settings: IWorkspaceSettings;
+  isDeleted: boolean;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -112,6 +114,14 @@ const workspaceSchema = new Schema<IWorkspace>(
       type: workspaceSettingsSchema,
       default: () => ({}),
       required: true,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
+    deletedAt: {
+      type: Date,
     },
   },
   {

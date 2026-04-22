@@ -9,6 +9,7 @@ import { connectRedis, disconnectRedis } from "./config/redis";
 import { clerkAuthMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/errorHandler";
 import { notFound } from "./middleware/notFound";
+import { userRoutes, workspaceRoutes } from "./routes";
 import { logger } from "./utils/logger";
 
 const app = express();
@@ -31,6 +32,9 @@ app.get("/health", (_req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+app.use("/api/users", userRoutes);
+app.use("/api/workspaces", workspaceRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

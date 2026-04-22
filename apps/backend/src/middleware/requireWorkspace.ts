@@ -7,7 +7,10 @@ type WorkspaceMembershipResolver = (input: {
 }) => Promise<boolean> | boolean;
 
 const getWorkspaceId = (req: Parameters<RequestHandler>[0]): string | undefined =>
-  req.params.workspaceId ?? req.params.workspaceSlug ?? req.headers["x-workspace-id"]?.toString();
+  req.params.workspaceId ??
+  req.params.workspaceSlug ??
+  req.params.id ??
+  req.headers["x-workspace-id"]?.toString();
 
 export const createRequireWorkspace =
   (resolveMembership: WorkspaceMembershipResolver): RequestHandler =>

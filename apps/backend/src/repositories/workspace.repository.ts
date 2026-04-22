@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import { type IWorkspace, type WorkspaceRole, WorkspaceModel } from "../models";
 import { BaseRepository } from "./base.repository";
 
@@ -7,13 +8,28 @@ export class WorkspaceRepository extends BaseRepository<IWorkspace> {
   }
 
   async findBySlug(slug: string): Promise<IWorkspace | null> {
-    return this.findOne({ slug: slug.toLowerCase() });
+    return this.findOne({ slug: slug.toLowerCase(), isDeleted: false });
   }
 
   async findByMemberId(userId: string): Promise<IWorkspace[]> {
     return this.findMany({
+      isDeleted: false,
       $or: [{ ownerId: userId }, { "members.userId": userId }],
     });
+  }
+
+  async isMember(workspaceId: string, userId: string): Promise<boolean> {
+    if (!Types.ObjectId.isValid(workspaceId)) {
+      return false;
+    }
+
+    const workspace = await this.findOne({
+      _id: workspaceId,
+      isDeleted: false,
+      $or: [{ ownerId: userId }, { "members.userId": userId }],
+    });
+
+    return workspace !== null;
   }
 
   async addMember(
