@@ -2,6 +2,9 @@ import { clerkClient } from "@clerk/express";
 import { userRepository, workspaceRepository } from "../repositories";
 import { AppError } from "../utils/AppError";
 import type { IUser } from "../models";
+import { cache } from "../utils/cache";
+import { CACHE_KEYS, CACHE_TTL_SECONDS } from "../utils/cacheKeys";
+import { invalidateUserCache } from "../utils/cacheInvalidation";
 
 export interface SyncUserInput {
   email?: string;
@@ -59,16 +62,20 @@ export class UserService {
       throw new AppError("User email and name are required", 400);
     }
 
-    return userRepository.upsertByClerkId(clerkId, {
+    const user = await userRepository.upsertByClerkId(clerkId, {
       email,
       name,
       avatar,
     });
+
+    await invalidateUserCache(clerkId);
+    return user;
   }
 
   async handleClerkWebhook(event: ClerkWebhookEvent): Promise<IUser | null> {
     if (event.type === "user.deleted") {
       await userRepository.deleteByClerkId(event.data.id);
+      await invalidateUserCache(event.data.id);
       return null;
     }
 
@@ -88,21 +95,27 @@ export class UserService {
   }
 
   async getUserProfile(clerkId: string): Promise<UserProfile> {
-    const user = await userRepository.findByClerkId(clerkId);
+    return cache.getOrSet(
+      CACHE_KEYS.user(clerkId),
+      async () => {
+        const user = await userRepository.findByClerkId(clerkId);
 
-    if (!user) {
-      throw new AppError("User profile not found", 404);
-    }
+        if (!user) {
+          throw new AppError("User profile not found", 404);
+        }
 
-    const workspaceCount = await workspaceRepository.count({
-      isDeleted: false,
-      $or: [{ ownerId: clerkId }, { "members.userId": clerkId }],
-    });
+        const workspaceCount = await workspaceRepository.count({
+          isDeleted: false,
+          $or: [{ ownerId: clerkId }, { "members.userId": clerkId }],
+        });
 
-    return {
-      ...user,
-      workspaceCount,
-    };
+        return {
+          ...user,
+          workspaceCount,
+        };
+      },
+      CACHE_TTL_SECONDS.userProfile,
+    );
   }
 
   async updateProfile(clerkId: string, data: Pick<SyncUserInput, "name" | "avatar">): Promise<IUser> {
@@ -120,6 +133,7 @@ export class UserService {
       throw new AppError("User profile not found", 404);
     }
 
+    await invalidateUserCache(clerkId);
     return updatedUser;
   }
 }

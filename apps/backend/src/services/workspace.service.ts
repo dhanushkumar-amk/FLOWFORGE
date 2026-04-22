@@ -3,6 +3,12 @@ import { Types } from "mongoose";
 import type { IWorkspace, WorkspaceRole } from "../models";
 import { userRepository, workspaceRepository } from "../repositories";
 import { AppError } from "../utils/AppError";
+import { cache } from "../utils/cache";
+import { CACHE_KEYS, CACHE_TTL_SECONDS } from "../utils/cacheKeys";
+import {
+  invalidateUserWorkspaceCaches,
+  invalidateWorkspaceCache,
+} from "../utils/cacheInvalidation";
 
 export interface CreateWorkspaceInput {
   name: string;
@@ -48,7 +54,7 @@ export class WorkspaceService {
       slug = `${baseSlug}-${suffix}`;
     }
 
-    return workspaceRepository.create({
+    const workspace = await workspaceRepository.create({
       name: data.name,
       slug,
       ownerId,
@@ -60,22 +66,33 @@ export class WorkspaceService {
         },
       ],
     });
+
+    await invalidateWorkspaceCache(workspace);
+    return workspace;
   }
 
   async getUserWorkspaces(userId: string): Promise<IWorkspace[]> {
-    return workspaceRepository.findByMemberId(userId);
+    return cache.getOrSet(
+      CACHE_KEYS.workspaceList(userId),
+      () => workspaceRepository.findByMemberId(userId),
+      CACHE_TTL_SECONDS.workspaceList,
+    );
   }
 
   async getWorkspaceById(workspaceId: string, userId: string): Promise<IWorkspace> {
     ensureObjectId(workspaceId);
 
-    const workspace = await workspaceRepository.findOne({
-      _id: workspaceId,
-      isDeleted: false,
-      $or: [{ ownerId: userId }, { "members.userId": userId }],
-    });
+    const workspace = await cache.getOrSet(
+      CACHE_KEYS.workspace(workspaceId),
+      () =>
+        workspaceRepository.findOne({
+          _id: workspaceId,
+          isDeleted: false,
+        }),
+      CACHE_TTL_SECONDS.workspace,
+    );
 
-    if (!workspace) {
+    if (!workspace || !this.canAccessWorkspace(workspace, userId)) {
       throw new AppError("Workspace not found", 404);
     }
 
@@ -115,6 +132,7 @@ export class WorkspaceService {
       throw new AppError("Workspace not found", 404);
     }
 
+    await Promise.all([invalidateWorkspaceCache(workspace), invalidateWorkspaceCache(updated)]);
     return updated;
   }
 
@@ -136,6 +154,7 @@ export class WorkspaceService {
       throw new AppError("Workspace not found", 404);
     }
 
+    await Promise.all([invalidateWorkspaceCache(workspace), invalidateWorkspaceCache(deleted)]);
     return deleted;
   }
 
@@ -165,7 +184,17 @@ export class WorkspaceService {
 
     const updated = await workspaceRepository.addMember(workspaceId, invitedUser.clerkId, input.role);
 
-    return updated ?? workspace;
+    if (!updated) {
+      return workspace;
+    }
+
+    await Promise.all([
+      invalidateWorkspaceCache(workspace),
+      invalidateWorkspaceCache(updated),
+      invalidateUserWorkspaceCaches([invitedUser.clerkId]),
+    ]);
+
+    return updated;
   }
 
   async removeMember(workspaceId: string, actorId: string, userId: string): Promise<IWorkspace> {
@@ -182,6 +211,7 @@ export class WorkspaceService {
       throw new AppError("Workspace not found", 404);
     }
 
+    await Promise.all([invalidateWorkspaceCache(workspace), invalidateWorkspaceCache(updated)]);
     return updated;
   }
 
@@ -204,7 +234,12 @@ export class WorkspaceService {
       throw new AppError("Workspace member not found", 404);
     }
 
+    await Promise.all([invalidateWorkspaceCache(workspace), invalidateWorkspaceCache(updated)]);
     return updated;
+  }
+
+  private canAccessWorkspace(workspace: IWorkspace, userId: string): boolean {
+    return workspace.ownerId === userId || workspace.members.some((member) => member.userId === userId);
   }
 
   private assertCanManageWorkspace(workspace: IWorkspace, userId: string): void {
