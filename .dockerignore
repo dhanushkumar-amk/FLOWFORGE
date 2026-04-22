@@ -6,9 +6,12 @@ dist
 **/dist
 build
 **/build
+coverage
+**/coverage
 .turbo
 **/.turbo
 .git
+.gitignore
 .env
 .env.*
 !.env.example
@@ -16,3 +19,5 @@ build
 !.env.development
 npm-debug.log*
 *.log
+Dockerfile
+docker-compose*.yml

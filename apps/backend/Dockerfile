@@ -29,7 +29,8 @@ COPY apps/frontend/package.json apps/frontend/package.json
 COPY packages/config/package.json packages/config/package.json
 COPY packages/shared-types/package.json packages/shared-types/package.json
 
-RUN npm ci --omit=dev --workspace @flowforge/backend --include-workspace-root=false \
+COPY --from=deps /app/node_modules node_modules
+RUN npm prune --omit=dev --workspace @flowforge/backend --include-workspace-root=false \
   && npm cache clean --force
 
 COPY --from=builder /app/apps/backend/dist apps/backend/dist

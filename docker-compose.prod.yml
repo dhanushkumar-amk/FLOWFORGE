@@ -1,4 +1,10 @@
 services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -16,8 +22,10 @@ services:
       - ./apps/backend/.env
     environment:
       NODE_ENV: production
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017/flowforge}
       REDIS_URL: redis://redis:6379
     depends_on:
+      - mongo
       - redis
 
   frontend:
@@ -41,4 +49,5 @@ services:
       - backend
 
 volumes:
+  mongo-data:
   redis-data:

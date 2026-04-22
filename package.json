@@ -5,7 +5,9 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
-    "docker:dev": "docker-compose up redis -d",
+    "docker:dev": "docker compose up mongo redis -d",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
     "lint": "turbo lint"
   },
   "workspaces": [
