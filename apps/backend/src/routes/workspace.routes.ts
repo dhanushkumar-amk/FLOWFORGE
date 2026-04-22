@@ -11,7 +11,14 @@ import {
 } from "../controllers/workspace.controller";
 import { requireAuth } from "../middleware/auth";
 import { createRequireWorkspace } from "../middleware/requireWorkspace";
+import { validate } from "../middleware/validate";
 import { workspaceRepository } from "../repositories";
+import {
+  createWorkspaceSchema,
+  inviteMemberSchema,
+  updateMemberRoleSchema,
+  updateWorkspaceSchema,
+} from "../validation/schemas";
 
 const router = Router();
 const requireWorkspaceMembership = createRequireWorkspace(({ userId, workspaceId }) =>
@@ -20,13 +27,18 @@ const requireWorkspaceMembership = createRequireWorkspace(({ userId, workspaceId
 
 router.use(requireAuth);
 
-router.post("/", createWorkspace);
+router.post("/", validate(createWorkspaceSchema), createWorkspace);
 router.get("/", getWorkspaces);
 router.get("/:id", requireWorkspaceMembership, getWorkspaceById);
-router.patch("/:id", requireWorkspaceMembership, updateWorkspace);
+router.patch("/:id", requireWorkspaceMembership, validate(updateWorkspaceSchema), updateWorkspace);
 router.delete("/:id", requireWorkspaceMembership, deleteWorkspace);
-router.post("/:id/members", requireWorkspaceMembership, inviteMember);
+router.post("/:id/members", requireWorkspaceMembership, validate(inviteMemberSchema), inviteMember);
 router.delete("/:id/members/:userId", requireWorkspaceMembership, removeMember);
-router.patch("/:id/members/:userId", requireWorkspaceMembership, updateMemberRole);
+router.patch(
+  "/:id/members/:userId",
+  requireWorkspaceMembership,
+  validate(updateMemberRoleSchema),
+  updateMemberRole,
+);
 
 export { router as workspaceRoutes };

@@ -60,7 +60,6 @@ const taskSchema = new Schema<ITask>(
       type: Schema.Types.ObjectId,
       ref: "Workflow",
       required: true,
-      index: true,
     },
     nodeId: {
       type: String,

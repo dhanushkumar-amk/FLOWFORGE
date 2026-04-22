@@ -89,7 +89,6 @@ const workspaceSchema = new Schema<IWorkspace>(
     slug: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
       match: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
@@ -98,7 +97,6 @@ const workspaceSchema = new Schema<IWorkspace>(
       type: String,
       required: true,
       trim: true,
-      index: true,
     },
     members: {
       type: [workspaceMemberSchema],

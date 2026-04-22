@@ -21,14 +21,11 @@ const userSchema = new Schema<IUser>(
     clerkId: {
       type: String,
       required: true,
-      unique: true,
-      index: true,
       trim: true,
     },
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
     },

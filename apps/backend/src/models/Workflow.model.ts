@@ -89,7 +89,6 @@ const workflowSchema = new Schema<IWorkflow>(
       type: Schema.Types.ObjectId,
       ref: "Workspace",
       required: true,
-      index: true,
     },
     name: {
       type: String,
@@ -127,7 +126,6 @@ const workflowSchema = new Schema<IWorkflow>(
       type: String,
       required: true,
       trim: true,
-      index: true,
     },
     updatedBy: {
       type: String,

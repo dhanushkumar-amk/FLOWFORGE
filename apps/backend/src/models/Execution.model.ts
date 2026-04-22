@@ -72,30 +72,25 @@ const executionSchema = new Schema<IExecution>(
       type: Schema.Types.ObjectId,
       ref: "Workflow",
       required: true,
-      index: true,
     },
     workspaceId: {
       type: Schema.Types.ObjectId,
       ref: "Workspace",
       required: true,
-      index: true,
     },
     triggeredBy: {
       type: String,
       required: true,
       trim: true,
-      index: true,
     },
     status: {
       type: String,
       enum: EXECUTION_STATUSES,
       default: "pending",
       required: true,
-      index: true,
     },
     startedAt: {
       type: Date,
-      index: true,
     },
     completedAt: {
       type: Date,

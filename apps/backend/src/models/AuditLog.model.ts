@@ -20,18 +20,15 @@ const auditLogSchema = new Schema<IAuditLog>(
       type: Schema.Types.ObjectId,
       ref: "Workspace",
       required: true,
-      index: true,
     },
     userId: {
       type: String,
       trim: true,
-      index: true,
     },
     action: {
       type: String,
       required: true,
       trim: true,
-      index: true,
     },
     resource: {
       type: String,
@@ -56,7 +53,6 @@ const auditLogSchema = new Schema<IAuditLog>(
       type: Date,
       default: Date.now,
       required: true,
-      index: true,
     },
   },
   {
