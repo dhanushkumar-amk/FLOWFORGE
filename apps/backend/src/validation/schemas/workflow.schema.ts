@@ -80,3 +80,12 @@ export const updateWorkflowSchema = z
 export type CreateWorkflowInput = z.infer<typeof createWorkflowSchema>;
 export type UpdateWorkflowInput = z.infer<typeof updateWorkflowSchema>;
 export type DagJsonInput = z.infer<typeof dagJsonSchema>;
+
+export const saveDagSchema = z
+  .object({
+    dagJson: dagJsonSchema,
+  })
+  .strict();
+
+export type SaveDagInput = z.infer<typeof saveDagSchema>;
+

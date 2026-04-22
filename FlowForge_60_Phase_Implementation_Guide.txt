@@ -1009,7 +1009,7 @@ PHASE 18 – FRONTEND API CLIENT & STATE MANAGEMENT SETUP
 GOAL:
   Set up Axios API client with Clerk auth headers, React Query for
   server state, and Zustand for client state.
-
+  
 TASKS:
   1. Create apps/frontend/src/lib/apiClient.ts:
        - Axios instance with baseURL from env

@@ -10,6 +10,7 @@ import { clerkAuthMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/errorHandler";
 import { notFound } from "./middleware/notFound";
 import { userRoutes, workspaceRoutes, dagRoutes } from "./routes";
+import { workflowRoutes } from "./routes/workflow.routes";
 import { globalRateLimiter } from "./middleware/rateLimiter";
 import { logger } from "./utils/logger";
 
@@ -37,7 +38,8 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/users", userRoutes);
 app.use("/api/workspaces", workspaceRoutes);
-app.use("/api/workflows", dagRoutes);
+app.use("/api/workflows", workflowRoutes);
+// Legacy DAG utility routes (validate/execution-plan via dagRoutes already merged into workflowRoutes)
 
 app.use(notFound);
 app.use(errorHandler);
