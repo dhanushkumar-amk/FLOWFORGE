@@ -13,6 +13,7 @@ import { userRoutes, workspaceRoutes, dagRoutes } from "./routes";
 import { workflowRoutes } from "./routes/workflow.routes";
 import { globalRateLimiter } from "./middleware/rateLimiter";
 import { logger } from "./utils/logger";
+import { initSocketServer } from "./socket";
 
 const app = express();
 
@@ -54,6 +55,9 @@ const startServer = async (): Promise<Server> => {
       environment: env.NODE_ENV,
     });
   });
+
+  // Attach Socket.io to the same HTTP server
+  initSocketServer(server);
 
   return server;
 };
